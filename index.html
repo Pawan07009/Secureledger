@@ -15,6 +15,130 @@
 </head>
 
 <body>
+  <!-- Welcome Gateway & Motion Graphics Interface -->
+  <div class="welcome-gateway" id="welcomeGateway" role="region" aria-label="Welcome and System Gateway">
+    <!-- Ambient Background Motion Graphics -->
+    <div class="gateway-bg-mesh" aria-hidden="true"></div>
+    <div class="gateway-ambient-orb orb-1" aria-hidden="true"></div>
+    <div class="gateway-ambient-orb orb-2" aria-hidden="true"></div>
+
+    <div class="gateway-card">
+      <!-- Top Gateway Bar -->
+      <div class="gateway-top-bar">
+        <div class="gateway-brand">
+          <div class="brand-icon small-brand-icon" aria-hidden="true">S</div>
+          <span class="gateway-brand-name">SecureLedger</span>
+          <span class="badge-tag small-tag">OS v3.0</span>
+        </div>
+        <button type="button" class="btn btn-icon btn-sm" id="btnGatewayThemeToggle" aria-label="Toggle theme">
+          <svg class="theme-icon-dark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          <svg class="theme-icon-light" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Central Hero Section with Motion Graphics -->
+      <div class="gateway-hero">
+        <div class="vault-motion-wrapper" aria-hidden="true">
+          <div class="vault-orbital-ring ring-outer"></div>
+          <div class="vault-orbital-ring ring-mid"></div>
+          <div class="vault-orbital-ring ring-inner"></div>
+          <div class="vault-node node-1"></div>
+          <div class="vault-node node-2"></div>
+          <div class="vault-node node-3"></div>
+          <div class="vault-shield-core">
+            <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              <circle cx="12" cy="11" r="3"></circle>
+              <path d="M12 14v3"></path>
+            </svg>
+          </div>
+        </div>
+
+        <div class="gateway-hero-content">
+          <div class="gateway-pill">
+            <span class="gateway-dot"></span>
+            <span>Next-Gen FinTech Treasury Architecture</span>
+          </div>
+          <h1 class="gateway-title">
+            Institutional Liquidity &amp; <span class="gradient-text">Cryptographic Ledger</span>
+          </h1>
+          <p class="gateway-subtitle">
+            Enterprise banking simulation featuring dual-tier clearance, WebCrypto SHA-256 Merkle chain verification, contextual step-up authorization, and real-time corporate liquidity controls.
+          </p>
+
+          <div class="gateway-actions">
+            <button type="button" class="btn btn-primary btn-gateway-cta" id="btnWelcomeSignIn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                <polyline points="10 17 15 12 10 7"></polyline>
+                <line x1="15" y1="12" x2="3" y2="12"></line>
+              </svg>
+              <span>Access Treasury Portal</span>
+            </button>
+
+            <button type="button" class="btn btn-secondary btn-gateway-secondary" id="btnWelcomeDemo">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              <span>Quick Demo Launch (Alex Sterling)</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Architecture Pillars Grid -->
+      <div class="gateway-pillars">
+        <div class="pillar-card">
+          <div class="pillar-icon-box">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+          </div>
+          <div class="pillar-content">
+            <h3>SHA-256 Merkle Chaining</h3>
+            <p>Native browser SubtleCrypto block hashing with real-time tamper detection demo.</p>
+          </div>
+        </div>
+
+        <div class="pillar-card">
+          <div class="pillar-icon-box">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+          </div>
+          <div class="pillar-content">
+            <h3>Dual-Tier Clearance</h3>
+            <p>Dynamic step-up challenge with 3-minute clearance decay and attempt-limited OTPs.</p>
+          </div>
+        </div>
+
+        <div class="pillar-card">
+          <div class="pillar-icon-box">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+              <line x1="2" y1="10" x2="22" y2="10"></line>
+            </svg>
+          </div>
+          <div class="pillar-content">
+            <h3>Institutional Liquidity</h3>
+            <p>Liquid balance vs. settled ledger tracking, virtual corporate card locking, and statements.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gateway Footer Note -->
+      <div class="gateway-footer">
+        <span>🔒 Educational FinTech Simulation • Zero External Runtime Dependencies • CSP Enforced</span>
+      </div>
+    </div>
+  </div>
+
   <div class="app-container">
 
     <!-- Mobile Navigation Backdrop -->

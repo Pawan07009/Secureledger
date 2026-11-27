@@ -1365,9 +1365,12 @@
       sessionCountdownEl.textContent = "Sign In Required";
     }
 
-    // Initial Authentication Gate: Show sign-in modal if not signed in
-    if (!auth.isAuthenticated) {
-      showLoginModal();
+    // Initial Authentication Gate: Welcome Gateway
+    const welcomeGateway = document.getElementById("welcomeGateway");
+    if (auth.isAuthenticated) {
+      if (welcomeGateway) welcomeGateway.classList.add("dismissed");
+    } else {
+      if (welcomeGateway) welcomeGateway.classList.remove("dismissed");
     }
 
     // ========================================================
@@ -2076,15 +2079,22 @@ SIMULATED FINTECH LEDGER • EDUCATIONAL DEMONSTRATION
     }
 
     // 11. Theme Switcher (Dark / Light)
+    function toggleTheme() {
+      const currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
+      const newTheme = currentTheme === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", newTheme);
+      localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+      ui.showToast("Theme Changed", `Switched to ${newTheme} mode.`, "info");
+    }
+
     const btnThemeToggle = document.getElementById("btnThemeToggle");
     if (btnThemeToggle) {
-      btnThemeToggle.addEventListener("click", () => {
-        const currentTheme = document.documentElement.getAttribute("data-theme") || "dark";
-        const newTheme = currentTheme === "dark" ? "light" : "dark";
-        document.documentElement.setAttribute("data-theme", newTheme);
-        localStorage.setItem(THEME_STORAGE_KEY, newTheme);
-        ui.showToast("Theme Changed", `Switched to ${newTheme} mode.`, "info");
-      });
+      btnThemeToggle.addEventListener("click", toggleTheme);
+    }
+
+    const btnGatewayThemeToggle = document.getElementById("btnGatewayThemeToggle");
+    if (btnGatewayThemeToggle) {
+      btnGatewayThemeToggle.addEventListener("click", toggleTheme);
     }
 
     // 12. Session Inactivity Modal Action
@@ -2102,7 +2112,8 @@ SIMULATED FINTECH LEDGER • EDUCATIONAL DEMONSTRATION
     if (btnLogout) {
       btnLogout.addEventListener("click", () => {
         auth.logout();
-        showLoginModal();
+        const gateway = document.getElementById("welcomeGateway");
+        if (gateway) gateway.classList.remove("dismissed");
       });
     }
 
@@ -2110,6 +2121,30 @@ SIMULATED FINTECH LEDGER • EDUCATIONAL DEMONSTRATION
       ui.openModal("loginModal");
       document.getElementById("loginCredentialsStep").style.display = "block";
       document.getElementById("loginMfaStep").style.display = "none";
+    }
+
+    // 14. Welcome Gateway Controls
+    const btnWelcomeSignIn = document.getElementById("btnWelcomeSignIn");
+    if (btnWelcomeSignIn) {
+      btnWelcomeSignIn.addEventListener("click", () => {
+        showLoginModal();
+      });
+    }
+
+    const btnWelcomeDemo = document.getElementById("btnWelcomeDemo");
+    if (btnWelcomeDemo) {
+      btnWelcomeDemo.addEventListener("click", () => {
+        const res = auth.login("alex.sterling@secureledger.io", "DemoSecure2026!");
+        if (res.requiresMfa) {
+          const mfaRes = auth.completeLoginMfa(res.code);
+          if (mfaRes.success) {
+            const gateway = document.getElementById("welcomeGateway");
+            if (gateway) gateway.classList.add("dismissed");
+            ui.showToast("Welcome to SecureLedger", "Authenticated as Alex Sterling (Chief Treasury Officer).", "success");
+            refreshDashboard();
+          }
+        }
+      });
     }
 
     const btnTogglePassword = document.getElementById("btnTogglePassword");
@@ -2202,6 +2237,8 @@ SIMULATED FINTECH LEDGER • EDUCATIONAL DEMONSTRATION
         if (res.success) {
           if (loginOtpInterval) clearInterval(loginOtpInterval);
           ui.closeModal("loginModal");
+          const gateway = document.getElementById("welcomeGateway");
+          if (gateway) gateway.classList.add("dismissed");
           ui.showToast("Authentication Successful", `Welcome back, ${auth.currentUser.name}.`, "success");
           refreshDashboard();
         } else {
