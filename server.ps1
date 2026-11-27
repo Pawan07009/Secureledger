@@ -59,6 +59,8 @@ $script:MimeTypes = @{
 # Explicitly forbidden sensitive files & patterns
 $script:ForbiddenFiles = @(
     'server.ps1',
+    'server.py',
+    'secureledger.db',
     'readme.md',
     'files.zip',
     'package.json',
@@ -134,7 +136,7 @@ function Invoke-Request($context) {
     $fileName = [System.IO.Path]::GetFileName($fullPath).ToLowerInvariant()
     $fileExt  = [System.IO.Path]::GetExtension($fullPath).ToLowerInvariant()
 
-    if ($fileName -in $script:ForbiddenFiles -or $fileName.StartsWith('.') -or $fileExt -in @('.ps1', '.md', '.zip', '.env', '.config', '.bak')) {
+    if ($fileName -in $script:ForbiddenFiles -or $fileName.StartsWith('.') -or $fileExt -in @('.ps1', '.py', '.md', '.zip', '.env', '.config', '.bak', '.db', '.sqlite', '.sqlite3', '.log')) {
         Send-Text $response 403 'Forbidden: Access to server configuration and documentation files is restricted.'
         return 403
     }

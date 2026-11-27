@@ -126,17 +126,59 @@ powershell -ExecutionPolicy Bypass -File .\server.ps1 -Port 8080
 ```
 Navigate to `http://localhost:5500/` (or `http://localhost:8080/`).
 
-### Option 2: Python Secure Server (Desktop & Mobile Phone LAN Testing)
+### Option 2: Python Secure Server (Desktop, Mobile Phone LAN Testing & REST API)
 
-The included `server.py` runs a multi-threaded secure server binding to all network interfaces (`0.0.0.0`), allowing testing on both your desktop and your mobile phone on the same Wi-Fi network with full security headers:
+The included `server.py` runs a multi-threaded secure enterprise backend binding to all network interfaces (`0.0.0.0`), with embedded SQLite database (`secureledger.db`), salted PBKDF2-HMAC-SHA256 password hashing, rate limiting, and REST API endpoints:
 
 ```bash
 cd banking-app
 python server.py --port 8080
 ```
 
-- **Desktop**: Open `http://localhost:8080/`
-- **Phone**: Open `http://<YOUR-LAN-IP>:8080/` (the exact IP is printed in the terminal on startup, e.g. `http://172.16.72.133:8080/`)
+- **Desktop (Localhost)**: Open `http://localhost:8080/`
+- **Phone / Mobile**: Open `http://<YOUR-LAN-IP>:8080/` (the exact IP is displayed in the console on startup, e.g. `http://172.16.72.133:8080/`)
+- **Default Credentials**:
+  - Email: `alex.sterling@secureledger.io`
+  - Password: `DemoSecure2026!`
+  - Role: `Chief Treasury Officer` (Admin clearance)
+
+### Automated Test Suite Execution
+
+Run the comprehensive 29-point automated test suite verifying static security headers, path traversal protection, sensitive file blocking, PBKDF2 authentication, MFA challenges, session management, and SHA-256 Merkle chain verification:
+
+```bash
+python test_server.py
+```
+
+Expected result:
+```
+================================================================
+  TEST SUITE COMPLETED: 29/29 tests passed (100%)
+================================================================
+```
+
+---
+
+## 📡 Enterprise REST API Endpoints
+
+The `server.py` backend exposes a full suite of authenticated REST API endpoints:
+
+| Endpoint | Method | Security Clearance | Description |
+| :--- | :--- | :--- | :--- |
+| `/api/auth/login` | `POST` | Public / Rate-Limited | Validates PBKDF2 password, enforces IP rate limits (5/min), and issues a 6-digit cryptographic MFA challenge. |
+| `/api/auth/verify-otp` | `POST` | Public | Validates OTP within 3-minute validity window and issues a secure `HttpOnly; SameSite=Strict` session cookie. |
+| `/api/auth/me` | `GET` | Authenticated | Returns current user profile, role, and active security clearance level. |
+| `/api/auth/step-up` | `POST` | Authenticated | Grants Level 2 Step-Up clearance with automated 3-minute decay. |
+| `/api/auth/logout` | `POST` | Authenticated | Terminates active session in database and invalidates session cookie. |
+| `/api/accounts` | `GET` | Authenticated | Returns balances (Available, Settled, Pending) across all corporate accounts. |
+| `/api/transactions` | `GET` | Authenticated | Returns transaction history with preceding and current cryptographic block hashes. |
+| `/api/transfers` | `POST` | Level 1 / Level 2 | Executes wire transfer with server-side liquidity checks, duplicate prevention, and SHA-256 hash chaining. |
+| `/api/cards` | `GET` | Authenticated | Retrieves corporate virtual card details and monthly spending limits. |
+| `/api/cards/freeze` | `POST` | Authenticated | Atomically toggles virtual card freeze state to prevent unapproved charges. |
+| `/api/audit` | `GET` | Public / Admin | Returns real-time cryptographic audit trail logs. |
+| `/api/audit/verify` | `POST` | Public / Admin | Recalculates full SHA-256 Merkle chain from Genesis block to confirm zero tampering. |
+| `/api/statement/download` | `GET` | Authenticated | Generates and streams sanitized CSV transaction statement with formula-injection guards. |
+| `/api/reset` | `POST` | Admin | Resets SQLite database and cryptographic state to pristine demo baseline. |
 
 ---
 
