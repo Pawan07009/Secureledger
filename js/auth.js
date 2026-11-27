@@ -1,57 +1,117 @@
-// Authentication, MFA Simulator & Step-Up Security Engine
+/**
+ * Authentication, Cryptographic OTP & Session Clearance Manager
+ * Meridian Treasury Simulation
+ */
 
 export class AuthManager {
   constructor(callbacks = {}) {
-    this.isAuthenticated = true; // start authenticated in demo mode or login prompt
+    this.callbacks = callbacks;
+    this.isAuthenticated = true;
+
     this.currentUser = {
       name: "Alex Sterling",
-      email: "alex.sterling@meridianbank.io",
-      role: "Enterprise Treasury Admin",
+      email: "alex.sterling@meridian-treasury.io",
+      role: "Chief Treasury Officer",
       customerId: "CUST-90241"
     };
-    
-    this.securityLevel = 1; // Level 1 = Standard Auth, Level 2 = Step-Up Elevated
+
+    this.securityLevel = 1; // Level 1 = Standard, Level 2 = Elevated Step-Up
     this.stepUpExpiresAt = null;
-    
-    // Session countdown (in seconds for demo visibility, e.g. 240s = 4 mins)
-    this.sessionTotalSeconds = 240;
+
+    this.sessionTotalSeconds = 240; // 4 minutes
     this.sessionRemaining = 240;
     this.timerInterval = null;
-    
-    // MFA state
-    this.currentMfaCode = this.generate6DigitCode();
-    this.mfaCodeExpiresAt = Date.now() + 60000;
-    
-    this.callbacks = callbacks; // onSessionTick, onSessionExpire, onSecurityLevelChange, onAuditLog
-    
-    this.initSessionTimer();
-    this.setupActivityListener();
+
+    // Active cryptographic OTP state (never persisted)
+    this.activeOtp = null;
+    this.otpExpiresAt = null;
+    this.otpAttempts = 0;
+    this.otpResendAvailableAt = 0;
+
+    this.initSessionHeartbeat();
+    this.setupUserActivityListeners();
   }
 
-  generate6DigitCode() {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+  generateSecureOtp() {
+    if (window.crypto && window.crypto.getRandomValues) {
+      const array = new Uint32Array(1);
+      window.crypto.getRandomValues(array);
+      return String(100000 + (array[0] % 900000));
+    }
+    return String(Math.floor(100000 + Math.random() * 900000));
   }
 
-  refreshMfaCode() {
-    this.currentMfaCode = this.generate6DigitCode();
-    this.mfaCodeExpiresAt = Date.now() + 60000;
-    return this.currentMfaCode;
+  issueNewOtp() {
+    this.activeOtp = this.generateSecureOtp();
+    this.otpExpiresAt = Date.now() + 60000; // 60 seconds
+    this.otpAttempts = 0;
+    this.otpResendAvailableAt = Date.now() + 20000; // 20s cooldown
+    return {
+      code: this.activeOtp,
+      expiresIn: 60
+    };
   }
 
-  initSessionTimer() {
+  canResendOtp() {
+    return Date.now() >= this.otpResendAvailableAt;
+  }
+
+  getResendWaitSeconds() {
+    return Math.max(0, Math.ceil((this.otpResendAvailableAt - Date.now()) / 1000));
+  }
+
+  verifyOtp(enteredCode) {
+    if (!this.activeOtp) {
+      return { success: false, error: "No active verification passcode found. Please request a new one." };
+    }
+
+    if (Date.now() > this.otpExpiresAt) {
+      this.activeOtp = null;
+      return { success: false, error: "Verification passcode has expired. Please request a new code." };
+    }
+
+    this.otpAttempts++;
+
+    if (enteredCode.trim() === this.activeOtp) {
+      // Invalidate immediately to prevent token reuse
+      this.activeOtp = null;
+      this.otpExpiresAt = null;
+      return { success: true };
+    }
+
+    if (this.otpAttempts >= 3) {
+      this.activeOtp = null;
+      return {
+        success: false,
+        locked: true,
+        error: "Maximum verification attempts (3) exceeded. Security challenge invalidated."
+      };
+    }
+
+    const remaining = 3 - this.otpAttempts;
+    return {
+      success: false,
+      error: `Invalid passcode. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`
+    };
+  }
+
+  initSessionHeartbeat() {
     if (this.timerInterval) clearInterval(this.timerInterval);
-    
+
     this.timerInterval = setInterval(() => {
       if (!this.isAuthenticated) return;
-      
+
       this.sessionRemaining--;
-      
-      // Check step-up expiration
+
+      // Automatic downgrade of elevated Step-Up session upon expiration
       if (this.securityLevel === 2 && this.stepUpExpiresAt && Date.now() > this.stepUpExpiresAt) {
         this.securityLevel = 1;
         this.stepUpExpiresAt = null;
         if (this.callbacks.onSecurityLevelChange) {
-          this.callbacks.onSecurityLevelChange(this.securityLevel, "Step-Up token expired. Reverted to Level 1.");
+          this.callbacks.onSecurityLevelChange(
+            1,
+            "Step-Up authorization period (3 minutes) expired. Reverted to Level 1."
+          );
         }
       }
 
@@ -65,12 +125,10 @@ export class AuthManager {
     }, 1000);
   }
 
-  setupActivityListener() {
+  setupUserActivityListeners() {
     const resetIdle = () => {
-      // Don't reset if less than 15s to let user witness warning if they want, but normal activity resets
-      if (this.isAuthenticated && this.sessionRemaining > 15) {
-        // slight top-up on active interaction
-        if (this.sessionRemaining < this.sessionTotalSeconds - 30) {
+      if (this.isAuthenticated && this.sessionRemaining > 30) {
+        if (this.sessionRemaining < this.sessionTotalSeconds - 15) {
           this.sessionRemaining = this.sessionTotalSeconds;
         }
       }
@@ -90,51 +148,46 @@ export class AuthManager {
     clearInterval(this.timerInterval);
     this.isAuthenticated = false;
     this.securityLevel = 1;
+    this.stepUpExpiresAt = null;
     if (this.callbacks.onSessionExpire) {
       this.callbacks.onSessionExpire();
     }
   }
 
-  login(customerId, password) {
-    if (customerId && password) {
-      this.isAuthenticated = false; // Next step requires MFA verification
-      this.refreshMfaCode();
-      return { success: true, requiresMfa: true, code: this.currentMfaCode };
-    }
-    return { success: false, error: "Invalid credentials." };
-  }
-
-  verifyMfa(enteredCode) {
-    if (enteredCode === this.currentMfaCode) {
-      this.isAuthenticated = true;
-      this.securityLevel = 1;
-      this.sessionRemaining = this.sessionTotalSeconds;
-      this.initSessionTimer();
-      if (this.callbacks.onAuditLog) {
-        this.callbacks.onAuditLog("Login MFA Verified", "Multi-Factor Authentication completed successfully.");
-      }
-      return { success: true };
-    }
-    return { success: false, error: "Invalid verification code. Please check your simulated OTP code." };
-  }
-
-  elevateStepUp(method = "biometric") {
+  elevateStepUp(method = "Biometric Passkey") {
     this.securityLevel = 2;
-    // Step-up elevated privilege valid for 3 minutes
-    this.stepUpExpiresAt = Date.now() + 180000;
-    
+    this.stepUpExpiresAt = Date.now() + 180000; // 3 minutes
+
     if (this.callbacks.onSecurityLevelChange) {
       this.callbacks.onSecurityLevelChange(2, `Elevated to Level 2 via ${method}`);
     }
-    if (this.callbacks.onAuditLog) {
-      this.callbacks.onAuditLog("Step-Up Elevated", `Contextual authorization granted using ${method}.`);
-    }
     return true;
+  }
+
+  login(customerId, password) {
+    if (customerId && password && password.length >= 6) {
+      const otp = this.issueNewOtp();
+      return { success: true, requiresMfa: true, code: otp.code, expiresIn: otp.expiresIn };
+    }
+    return { success: false, error: "Please enter a valid customer identifier and password (min 6 characters)." };
+  }
+
+  completeLoginMfa(enteredCode) {
+    const verification = this.verifyOtp(enteredCode);
+    if (verification.success) {
+      this.isAuthenticated = true;
+      this.securityLevel = 1;
+      this.sessionRemaining = this.sessionTotalSeconds;
+      this.initSessionHeartbeat();
+      return { success: true };
+    }
+    return verification;
   }
 
   logout() {
     this.isAuthenticated = false;
     this.securityLevel = 1;
+    this.stepUpExpiresAt = null;
     clearInterval(this.timerInterval);
     if (this.callbacks.onSessionExpire) {
       this.callbacks.onSessionExpire();
