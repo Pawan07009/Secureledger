@@ -5,7 +5,7 @@ import { DEFAULT_ACCOUNTS, INITIAL_TRANSACTIONS, KNOWN_PAYEES, INITIAL_AUDIT_LOG
 export class LedgerEngine {
   constructor(authManager) {
     this.authManager = authManager;
-    this.STORAGE_KEY = "meridian_banking_ledger_state_v2";
+    this.STORAGE_KEY = "secureledger_banking_ledger_state_v2";
     this.STEP_UP_THRESHOLD = 1000.00; // Transactions over ₹1,000 require Step-up
     
     this.loadState();
@@ -254,7 +254,7 @@ export class LedgerEngine {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Meridian_Ledger_Statement_${acc.number.replace(/\s+/g, '')}.csv`);
+    link.setAttribute("download", `SecureLedger_Ledger_Statement_${acc.number.replace(/\s+/g, '')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

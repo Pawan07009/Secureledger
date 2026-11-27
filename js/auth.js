@@ -1,6 +1,6 @@
 /**
  * Authentication, Cryptographic OTP & Session Clearance Manager
- * Meridian Treasury Simulation
+ * SecureLedger Simulation
  */
 
 export class AuthManager {
@@ -10,7 +10,7 @@ export class AuthManager {
 
     this.currentUser = {
       name: "Alex Sterling",
-      email: "alex.sterling@meridian-treasury.io",
+      email: "alex.sterling@secureledger.io",
       role: "Chief Treasury Officer",
       customerId: "CUST-90241"
     };

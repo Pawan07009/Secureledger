@@ -1,6 +1,6 @@
-# Meridian Treasury
+# SecureLedger
 
-An enterprise-grade, accessible front-end **banking simulation and cryptographic ledger demonstration** built with semantic HTML5, modern CSS3, and vanilla JavaScript (ES2022). Meridian Treasury models real-world corporate banking architecture: dual-tier security clearance (Level 1 / Level 2), time-decaying step-up authorization, WebCrypto-driven SHA-256 Merkle audit chaining, multi-account ledger balances, dynamic cashflow analytics, and corporate virtual card controls.
+An enterprise-grade, accessible front-end **banking simulation and cryptographic ledger demonstration** built with semantic HTML5, modern CSS3, and vanilla JavaScript (ES2022). SecureLedger models real-world corporate banking architecture: dual-tier security clearance (Level 1 / Level 2), time-decaying step-up authorization, WebCrypto-driven SHA-256 Merkle audit chaining, multi-account ledger balances, dynamic cashflow analytics, and corporate virtual card controls.
 
 > **EDUCATIONAL SIMULATION NOTICE**  
 > **This project is an educational and architectural simulation designed for developer portfolios, technical interviews, and security demonstrations.**  
@@ -21,7 +21,7 @@ An enterprise-grade, accessible front-end **banking simulation and cryptographic
 ## ✨ Comprehensive Feature Matrix
 
 ### 1. Authentication, MFA & Session Management
-- **Customer Gateway**: Fictional demo credentials (`alex.sterling@meridian-treasury.io`) with password visibility toggle.
+- **Customer Gateway**: Fictional demo credentials (`alex.sterling@secureledger.io`) with password visibility toggle.
 - **Cryptographic OTP Generation**: 6-digit one-time passcodes generated using `window.crypto.getRandomValues`.
 - **OTP Lifecycle**: 60-second animated expiration countdown, visual progress bar, 20-second resend cooldown, and lockout after 3 consecutive failed attempts.
 - **Inactivity Heartbeat Guard**: 4-minute session timer with active user activity detection (`click`, `keydown`), a 30-second warning modal, session extension, and automated logout.
@@ -64,7 +64,7 @@ An enterprise-grade, accessible front-end **banking simulation and cryptographic
 - **Simulate Tamper**: Educational sandbox button that mutates historical log data to demonstrate real-time cryptographic integrity failure detection.
 
 ### 6. Corporate Card & Financial Controls
-- **Virtual Corporate Card**: Interactive `Meridian Corporate Elite •••• 4028` with CVV toggle.
+- **Virtual Corporate Card**: Interactive `SecureLedger Corporate Elite •••• 4028` with CVV toggle.
 - **Security Freeze**: Instant lock/unlock switch to prevent card authorizations.
 - **Spending Budget Tracker**: Visual track monitoring expenditure against monthly operating limits.
 - **Beneficiaries Management**: Dedicated modal to inspect verified whitelist and add custom counterparties.

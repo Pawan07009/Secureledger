@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ==============================================================================
-Meridian Treasury - Secure Static & Network Development Server
+SecureLedger - Secure Static & Network Development Server
 ==============================================================================
 Features:
 - Binds to 0.0.0.0 for access across Localhost and Mobile/LAN devices.
@@ -75,7 +75,7 @@ CSP_POLICY = (
 
 
 class SecureRequestHandler(BaseHTTPRequestHandler):
-    server_version = "MeridianTreasuryServer/3.0"
+    server_version = "SecureLedgerServer/3.0"
 
     def set_security_headers(self):
         self.send_header("Content-Security-Policy", CSP_POLICY)
@@ -169,7 +169,7 @@ def get_lan_ip():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Meridian Treasury Development Server")
+    parser = argparse.ArgumentParser(description="SecureLedger Development Server")
     parser.add_argument("-p", "--port", type=int, default=8080, help="Port to listen on (default: 8080)")
     parser.add_argument("-b", "--bind", default="0.0.0.0", help="Address to bind to (default: 0.0.0.0 for LAN access)")
     parser.add_argument("-d", "--dir", default=os.path.dirname(os.path.abspath(__file__)), help="Root directory")
@@ -186,7 +186,7 @@ def main():
         sys.exit(1)
 
     print("=" * 60)
-    print("  Meridian Treasury - Secure Banking Simulation Server")
+    print("  SecureLedger - Secure Banking Simulation Server")
     print("=" * 60)
     print(f" Serving Directory : {args.dir}")
     print(f" Desktop (Local)   : http://localhost:{args.port}/")

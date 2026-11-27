@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Secure static development server for Meridian Treasury banking simulation.
+    Secure static development server for SecureLedger banking simulation.
 
 .DESCRIPTION
     Serves approved web assets strictly on localhost (<Port>).
@@ -170,7 +170,7 @@ catch {
 }
 
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "  Meridian Treasury - Secure Banking Simulation Server" -ForegroundColor Cyan
+Write-Host "  SecureLedger - Secure Banking Simulation Server" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host " Serving Path : $($script:Root)" -ForegroundColor Gray
 Write-Host " Endpoint     : $prefix" -ForegroundColor Green
@@ -204,5 +204,5 @@ try {
 finally {
     $listener.Stop()
     $listener.Close()
-    Write-Host "`n[INFO] Meridian Treasury server terminated cleanly." -ForegroundColor Gray
+    Write-Host "`n[INFO] SecureLedger server terminated cleanly." -ForegroundColor Gray
 }

@@ -1,5 +1,5 @@
 /**
- * Meridian Treasury OS - Enterprise Banking Access & Cryptographic Ledger
+ * SecureLedger OS - Enterprise Banking Access & Cryptographic Ledger
  * Comprehensive, production-grade simulation script.
  * Zero external dependencies. Fully CSP compliant (no inline scripts).
  */
@@ -11,8 +11,8 @@
   // 1. CONSTANTS, INITIAL DATA & CRYPTO HELPERS
   // ========================================================
 
-  const STORAGE_KEY = "meridian_treasury_ledger_v3";
-  const THEME_STORAGE_KEY = "meridian_treasury_theme";
+  const STORAGE_KEY = "secureledger_treasury_ledger_v3";
+  const THEME_STORAGE_KEY = "secureledger_theme";
   const STEP_UP_THRESHOLD = 1000.0;
   const SINGLE_TRANSFER_LIMIT = 500000.0;
   const LEVEL_2_DURATION_MS = 180000; // 3 minutes
@@ -212,7 +212,7 @@
 
       this.currentUser = {
         name: "Alex Sterling",
-        email: "alex.sterling@meridian-treasury.io",
+        email: "alex.sterling@secureledger.io",
         role: "Chief Treasury Officer",
         customerId: "CUST-90241"
       };
@@ -416,7 +416,7 @@
     async createGenesisBlock() {
       const timestamp = new Date("2026-10-26T00:00:00Z").toISOString();
       const action = "Genesis Node Initialized";
-      const details = "Meridian Treasury Ledger genesis block minted with SHA-256 WebCrypto.";
+      const details = "SecureLedger genesis block minted with SHA-256 WebCrypto.";
       const user = "SYSTEM_NODE_01";
       const prevHash = GENESIS_PREV_HASH;
 
@@ -836,7 +836,7 @@
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `Meridian_Ledger_${acc.number.replace(/\s+/g, "")}_Statement.csv`);
+      link.setAttribute("download", `SecureLedger_Ledger_${acc.number.replace(/\s+/g, "")}_Statement.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -1753,7 +1753,7 @@
       btnDownloadReceipt.addEventListener("click", () => {
         const text = `
 ==================================================
-        MERIDIAN TREASURY TRANSACTION RECEIPT
+        SECURELEDGER TRANSACTION RECEIPT
 ==================================================
 Reference ID : ${document.getElementById("receiptRefId").textContent}
 Timestamp    : ${document.getElementById("receiptTimestamp").textContent}
@@ -1774,7 +1774,7 @@ SIMULATED FINTECH LEDGER • EDUCATIONAL DEMONSTRATION
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `Meridian_Receipt_${Date.now()}.txt`;
+        a.download = `SecureLedger_Receipt_${Date.now()}.txt`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

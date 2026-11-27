@@ -14,7 +14,7 @@ tests = [
     (f'{base}/..%2f..%2fwin.ini', 403, "Path traversal block"),
 ]
 
-print("=== MERIDIAN TREASURY SERVER SECURITY TEST SUITE ===")
+print("=== SECURELEDGER SERVER SECURITY TEST SUITE ===")
 passed = 0
 for url, expected, desc in tests:
     try:
