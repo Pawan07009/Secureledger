@@ -1,4 +1,4 @@
-# Meridian Treasury
+# SECURELEDGER
 
 A front-end banking dashboard **demo** built with plain HTML, CSS and JavaScript. It simulates a secure treasury portal: multi-factor sign-in, step-up verification for high-value transfers, a three-balance ledger, and a session audit log.
 
