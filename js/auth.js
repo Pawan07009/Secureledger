@@ -6,7 +6,7 @@
 export class AuthManager {
   constructor(callbacks = {}) {
     this.callbacks = callbacks;
-    this.isAuthenticated = true;
+    this.isAuthenticated = false;
 
     this.currentUser = {
       name: "Alex Sterling",
@@ -28,7 +28,9 @@ export class AuthManager {
     this.otpAttempts = 0;
     this.otpResendAvailableAt = 0;
 
-    this.initSessionHeartbeat();
+    if (this.isAuthenticated) {
+      this.initSessionHeartbeat();
+    }
     this.setupUserActivityListeners();
   }
 

@@ -208,7 +208,7 @@
   class AuthManager {
     constructor(callbacks = {}) {
       this.callbacks = callbacks;
-      this.isAuthenticated = true;
+      this.isAuthenticated = false;
 
       this.currentUser = {
         name: "Alex Sterling",
@@ -230,7 +230,9 @@
       this.otpAttempts = 0;
       this.otpResendAvailableAt = 0;
 
-      this.initSessionHeartbeat();
+      if (this.isAuthenticated) {
+        this.initSessionHeartbeat();
+      }
       this.setupUserActivityListeners();
     }
 
@@ -1181,6 +1183,9 @@
       // Key listener for Escape and Tab trapping
       modal.onkeydown = (e) => {
         if (e.key === "Escape") {
+          if (modalId === "loginModal" && !auth.isAuthenticated) {
+            return; // Cannot dismiss login modal while unauthenticated
+          }
           this.closeModal(modalId);
         } else if (e.key === "Tab") {
           const first = focusable[0];
@@ -1255,11 +1260,15 @@
 
     const auth = new AuthManager({
       onSessionTick: (remaining, total) => {
+        const countdownEl = document.getElementById("sessionCountdown");
+        if (!auth.isAuthenticated) {
+          if (countdownEl) countdownEl.textContent = "Sign In Required";
+          return;
+        }
         const minutes = Math.floor(remaining / 60);
         const seconds = remaining % 60;
         const formatted = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 
-        const countdownEl = document.getElementById("sessionCountdown");
         const pulseEl = document.getElementById("sessionPulse");
         if (countdownEl) countdownEl.textContent = formatted;
 
@@ -1350,6 +1359,16 @@
     updateSecurityTierUI(auth.securityLevel);
     refreshDashboard();
     ui.renderNotifications(notifications);
+
+    const sessionCountdownEl = document.getElementById("sessionCountdown");
+    if (sessionCountdownEl && !auth.isAuthenticated) {
+      sessionCountdownEl.textContent = "Sign In Required";
+    }
+
+    // Initial Authentication Gate: Show sign-in modal if not signed in
+    if (!auth.isAuthenticated) {
+      showLoginModal();
+    }
 
     // ========================================================
     // EVENT WIRING & CONTROLS
@@ -2154,6 +2173,21 @@ SIMULATED FINTECH LEDGER • EDUCATIONAL DEMONSTRATION
         document.getElementById("loginDemoMfaCode").textContent = newOtp.code;
         startLoginOtpTimer();
         ui.showToast("Code Resent", "A new passcode has been issued.", "info");
+      });
+    }
+
+    const btnAutoFillLoginOtp = document.getElementById("btnAutoFillLoginOtp");
+    if (btnAutoFillLoginOtp) {
+      btnAutoFillLoginOtp.addEventListener("click", () => {
+        const code = document.getElementById("loginDemoMfaCode").textContent.trim();
+        if (code && code !== "------" && code !== "EXPIRED") {
+          const input = document.getElementById("loginMfaInput");
+          if (input) {
+            input.value = code;
+            input.focus();
+            ui.showToast("Passcode Auto-filled", `Entered security code: ${code}`, "info");
+          }
+        }
       });
     }
 
