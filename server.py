@@ -32,6 +32,8 @@ import hashlib
 import hmac
 import sqlite3
 import argparse
+import base64
+import urllib.request
 import urllib.parse
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from datetime import datetime, timezone
@@ -136,6 +138,153 @@ def compute_audit_hash(prev_hash: str, log_id: str, timestamp: str, actor: str, 
 
 
 # ==============================================================================
+# ENVIRONMENT & OUTBOUND SMS DISPATCH GATEWAY
+# ==============================================================================
+
+def load_env_file():
+    """Load key-value environment variables from local .env if present."""
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    if os.path.exists(env_path):
+        try:
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        k = k.strip()
+                        v = v.strip().strip("'").strip('"')
+                        if k and k not in os.environ:
+                            os.environ[k] = v
+        except Exception:
+            pass
+
+
+def dispatch_sms(phone: str, code: str, email: str = "") -> dict:
+    """
+    Dispatch SMS verification OTP.
+    Supports Fast2SMS (instant India route), Twilio, and MSG91 via environment variables.
+    Falls back to secure console logging in development mode.
+    NEVER leaks OTP code in client HTTP payloads.
+    """
+    load_env_file()
+    clean_digits = "".join(ch for ch in str(phone) if ch.isdigit())
+    masked_phone = f"+91••••••{clean_digits[-4:]}" if len(clean_digits) >= 4 else phone
+    email_label = f" ({email})" if email else ""
+
+    # 1. Fast2SMS Gateway (Instant OTP for India numbers)
+    fast2sms_key = os.environ.get("FAST2SMS_API_KEY")
+    if fast2sms_key:
+        try:
+            target_number = clean_digits[-10:] if len(clean_digits) >= 10 else clean_digits
+            payload = json.dumps({
+                "variables_values": code,
+                "route": "otp",
+                "numbers": target_number
+            }).encode("utf-8")
+            req = urllib.request.Request(
+                "https://www.fast2sms.com/dev/bulkV2",
+                data=payload,
+                headers={
+                    "authorization": fast2sms_key,
+                    "content-type": "application/json"
+                },
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=8.0) as resp:
+                res_data = json.loads(resp.read().decode("utf-8"))
+                if res_data.get("return") is True:
+                    print(f"[SMS GATEWAY SUCCESS - FAST2SMS] Dispatched OTP SMS to {masked_phone}", flush=True)
+                    return {"success": True, "provider": "fast2sms"}
+                print(f"[SMS GATEWAY ERROR - FAST2SMS]: {res_data}", flush=True)
+        except Exception as e:
+            print(f"[SMS GATEWAY EXCEPTION - FAST2SMS]: {e}", flush=True)
+
+    # 2. Twilio Messages API
+    twilio_sid = os.environ.get("TWILIO_ACCOUNT_SID")
+    twilio_token = os.environ.get("TWILIO_AUTH_TOKEN")
+    twilio_from = os.environ.get("TWILIO_FROM_NUMBER")
+    if twilio_sid and twilio_token and twilio_from:
+        try:
+            to_number = f"+{clean_digits}" if not str(phone).startswith("+") else phone
+            auth_str = f"{twilio_sid}:{twilio_token}"
+            auth_b64 = base64.b64encode(auth_str.encode("utf-8")).decode("ascii")
+            body_data = urllib.parse.urlencode({
+                "To": to_number,
+                "From": twilio_from,
+                "Body": f"Your SecureLedger verification code is: {code}. Valid for 5 minutes. Do not share this code."
+            }).encode("utf-8")
+            req = urllib.request.Request(
+                f"https://api.twilio.com/2010-04-01/Accounts/{twilio_sid}/Messages.json",
+                data=body_data,
+                headers={
+                    "Authorization": f"Basic {auth_b64}",
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=8.0) as resp:
+                res_data = json.loads(resp.read().decode("utf-8"))
+                if not res_data.get("error_code"):
+                    print(f"[SMS GATEWAY SUCCESS - TWILIO] Dispatched OTP SMS to {masked_phone}", flush=True)
+                    return {"success": True, "provider": "twilio"}
+                print(f"[SMS GATEWAY ERROR - TWILIO]: {res_data}", flush=True)
+        except Exception as e:
+            print(f"[SMS GATEWAY EXCEPTION - TWILIO]: {e}", flush=True)
+
+    # 3. MSG91 Flow API
+    msg91_key = os.environ.get("MSG91_AUTH_KEY")
+    msg91_tpl = os.environ.get("MSG91_TEMPLATE_ID")
+    if msg91_key and msg91_tpl:
+        try:
+            payload = json.dumps({
+                "template_id": msg91_tpl,
+                "short_url": "0",
+                "recipients": [{"mobiles": clean_digits, "otp": code}]
+            }).encode("utf-8")
+            req = urllib.request.Request(
+                "https://control.msg91.com/api/v5/flow/",
+                data=payload,
+                headers={
+                    "authkey": msg91_key,
+                    "content-type": "application/json"
+                },
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=8.0) as resp:
+                res_data = json.loads(resp.read().decode("utf-8"))
+                if res_data.get("type") != "error":
+                    print(f"[SMS GATEWAY SUCCESS - MSG91] Dispatched OTP SMS to {masked_phone}", flush=True)
+                    return {"success": True, "provider": "msg91"}
+                print(f"[SMS GATEWAY ERROR - MSG91]: {res_data}", flush=True)
+        except Exception as e:
+            print(f"[SMS GATEWAY EXCEPTION - MSG91]: {e}", flush=True)
+
+    # 4. Zero-Leak Secure Console Log Fallback (Development Mode)
+    print(f"[SECURE SMS DISPATCH (SERVER LOG ONLY)] Recipient: {masked_phone}{email_label} | OTP Code: {code} | Valid: 5 min", flush=True)
+    return {"success": True, "provider": "development-mock"}
+
+
+def find_user_by_identifier(conn, identifier: str):
+    """Resolve user by email or registered phone number digits."""
+    clean_id = identifier.strip().lower()
+    clean_num = "".join(ch for ch in clean_id if ch.isdigit())
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM users WHERE lower(email) = ?", (clean_id,))
+    user = cur.fetchone()
+    if user:
+        return user
+    if clean_num:
+        cur.execute("SELECT * FROM users")
+        for u in cur.fetchall():
+            u_phone = u["phone"] if "phone" in u.keys() else ""
+            if u_phone:
+                u_digits = "".join(ch for ch in u_phone if ch.isdigit())
+                if u_digits and (clean_num == u_digits or u_digits.endswith(clean_num) or clean_num.endswith(u_digits)):
+                    return u
+    return None
+
+
+# ==============================================================================
 # DATABASE INITIALIZATION & MIGRATIONS
 # ==============================================================================
 
@@ -163,7 +312,8 @@ def init_database(db_path: str = DB_NAME):
             salt TEXT NOT NULL,
             password_hash TEXT NOT NULL,
             failed_attempts INTEGER NOT NULL DEFAULT 0,
-            locked_until REAL NOT NULL DEFAULT 0
+            locked_until REAL NOT NULL DEFAULT 0,
+            phone TEXT DEFAULT '+917310886131'
         );
 
         CREATE TABLE IF NOT EXISTS sessions (
@@ -247,13 +397,20 @@ def init_database(db_path: str = DB_NAME):
         );
     """)
 
+    # Column migrations
+    cur.execute("PRAGMA table_info(users)")
+    user_cols = [r[1] for r in cur.fetchall()]
+    if "phone" not in user_cols:
+        cur.execute("ALTER TABLE users ADD COLUMN phone TEXT DEFAULT '+917310886131'")
+        cur.execute("UPDATE users SET phone = '+917310886131' WHERE phone IS NULL")
+
     # Check if seed user exists
     cur.execute("SELECT id FROM users WHERE email = 'secureuser@gmail.com'")
     if not cur.fetchone():
         salt, p_hash = hash_password("DemoSecure2026!")
         cur.execute("""
-            INSERT OR REPLACE INTO users (id, email, name, title, role, clearance, salt, password_hash)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO users (id, email, name, title, role, clearance, salt, password_hash, phone)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             "usr_alex_sterling",
             "secureuser@gmail.com",
@@ -262,7 +419,8 @@ def init_database(db_path: str = DB_NAME):
             "admin",
             "level_1",
             salt,
-            p_hash
+            p_hash,
+            "+917310886131"
         ))
 
         # Also update any existing accounts referencing the default user
@@ -579,26 +737,20 @@ class SecureRequestHandler(BaseHTTPRequestHandler):
                     self.send_json(400, {"success": False, "error": "Email or phone identifier and password are required."})
                     return
 
-                # Support phone number resolution (e.g. 7310886131 or +917310886131)
-                clean_phone = identifier.replace(" ", "").replace("-", "").replace("+", "")
-                if clean_phone.endswith("7310886131"):
-                    email = "secureuser@gmail.com"
-                else:
-                    email = identifier
-
-                cur = conn.cursor()
-                cur.execute("SELECT * FROM users WHERE email = ?", (email,))
-                user = cur.fetchone()
-
+                user = find_user_by_identifier(conn, identifier)
                 if not user or not verify_password(password, user["salt"], user["password_hash"]):
                     self.send_json(401, {"success": False, "error": "Invalid email or credentials."})
                     return
+
+                email = user["email"]
+                user_phone = user["phone"] if "phone" in user.keys() and user["phone"] else "+917310886131"
 
                 # Generate secure 6-digit cryptographic OTP
                 otp_code = f"{secrets.randbelow(900000) + 100000}"
                 code_hash = hashlib.sha256(otp_code.encode("utf-8")).hexdigest()
                 expires_at = time.time() + 180.0  # 3 minutes
 
+                cur = conn.cursor()
                 cur.execute("""
                     INSERT INTO mfa_challenges (email, code, attempts, expires_at, created_at)
                     VALUES (?, ?, 0, ?, ?)
@@ -606,12 +758,12 @@ class SecureRequestHandler(BaseHTTPRequestHandler):
                 conn.commit()
 
                 # Mask phone and email for display
-                masked_phone = "+91••••••6131"
+                clean_digits = "".join(ch for ch in str(user_phone) if ch.isdigit())
+                masked_phone = f"+91••••••{clean_digits[-4:]}" if len(clean_digits) >= 4 else "+91••••••6131"
                 email_parts = email.split('@')
                 masked = f"{email_parts[0][0]}***{email_parts[0][-1]}@{email_parts[1]}" if len(email_parts[0]) > 2 else email
 
-                # Secure dispatch log on server console ONLY - zero leakage in HTTP payload
-                print(f"[SECURE SMS DISPATCH (SERVER LOG ONLY)] Recipient: {masked_phone} ({masked}) | OTP Code: {otp_code} | Valid: 3 min", flush=True)
+                dispatch_sms(user_phone, otp_code, email)
 
                 self.send_json(200, {
                     "success": True,
@@ -626,11 +778,8 @@ class SecureRequestHandler(BaseHTTPRequestHandler):
             # 2. MFA Verification Endpoint: /api/auth/verify-otp
             elif path == '/api/auth/verify-otp':
                 identifier = data.get("email", "").strip().lower()
-                clean_phone = identifier.replace(" ", "").replace("-", "").replace("+", "")
-                if clean_phone.endswith("7310886131"):
-                    email = "secureuser@gmail.com"
-                else:
-                    email = identifier
+                user = find_user_by_identifier(conn, identifier)
+                email = user["email"] if user else identifier
 
                 code = data.get("code", "").strip()
 
@@ -705,24 +854,7 @@ class SecureRequestHandler(BaseHTTPRequestHandler):
             # Resend OTP Endpoint: /api/auth/resend-otp
             elif path == '/api/auth/resend-otp':
                 identifier = data.get("email", "").strip().lower()
-                clean_phone = identifier.replace(" ", "").replace("-", "").replace("+", "")
-                if clean_phone.endswith("7310886131"):
-                    email = "secureuser@gmail.com"
-                else:
-                    email = identifier
-
-                if not email:
-                    self.send_json(400, {"success": False, "error": "Customer identifier is required."})
-                    return
-
-                # 60s cooldown per identifier
-                if not self.check_rate_limit(conn, f"resend_{email}", limit=1, window_sec=60):
-                    self.send_json(429, {"success": False, "error": "Please wait 60 seconds before requesting another code."})
-                    return
-
-                cur = conn.cursor()
-                cur.execute("SELECT * FROM users WHERE email = ?", (email,))
-                user = cur.fetchone()
+                user = find_user_by_identifier(conn, identifier)
 
                 if not user:
                     self.send_json(200, {
@@ -731,22 +863,29 @@ class SecureRequestHandler(BaseHTTPRequestHandler):
                     })
                     return
 
+                email = user["email"]
+                user_phone = user["phone"] if "phone" in user.keys() and user["phone"] else "+917310886131"
+
+                # 60s cooldown per identifier
+                if not self.check_rate_limit(conn, f"resend_{email}", limit=1, window_sec=60):
+                    self.send_json(429, {"success": False, "error": "Please wait 60 seconds before requesting another code."})
+                    return
+
                 # Generate secure 6-digit cryptographic OTP
                 otp_code = f"{secrets.randbelow(900000) + 100000}"
                 code_hash = hashlib.sha256(otp_code.encode("utf-8")).hexdigest()
                 expires_at = time.time() + 300.0  # 5 minutes
 
+                cur = conn.cursor()
                 cur.execute("""
                     INSERT INTO mfa_challenges (email, code, attempts, expires_at, created_at)
                     VALUES (?, ?, 0, ?, ?)
                 """, (email, code_hash, expires_at, time.time()))
                 conn.commit()
 
-                masked_phone = "+91••••••6131"
-                email_parts = email.split('@')
-                masked = f"{email_parts[0][0]}***{email_parts[0][-1]}@{email_parts[1]}" if len(email_parts[0]) > 2 else email
-
-                print(f"[SECURE SMS DISPATCH (SERVER LOG ONLY)] Resend to Recipient: {masked_phone} ({masked}) | OTP Code: {otp_code} | Valid: 5 min", flush=True)
+                clean_digits = "".join(ch for ch in str(user_phone) if ch.isdigit())
+                masked_phone = f"+91••••••{clean_digits[-4:]}" if len(clean_digits) >= 4 else "+91••••••6131"
+                dispatch_sms(user_phone, otp_code, email)
 
                 self.send_json(200, {
                     "success": True,
@@ -773,6 +912,9 @@ class SecureRequestHandler(BaseHTTPRequestHandler):
                     self.send_json(400, {"success": False, "error": "Password must be at least 8 characters."})
                     return
 
+                clean_digits = "".join(ch for ch in str(phone) if ch.isdigit())
+                normalized_phone = f"+{clean_digits}" if phone.startswith("+") else (f"+91{clean_digits}" if len(clean_digits) == 10 else clean_digits)
+
                 cur = conn.cursor()
                 cur.execute("SELECT id FROM users WHERE email = ?", (email,))
                 if cur.fetchone():
@@ -783,9 +925,9 @@ class SecureRequestHandler(BaseHTTPRequestHandler):
                 new_user_id = f"usr_{secrets.token_hex(6)}"
 
                 cur.execute("""
-                    INSERT INTO users (id, email, name, title, role, clearance, salt, password_hash)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (new_user_id, email, name, title, 'treasury_officer', 'level_1', salt, p_hash))
+                    INSERT INTO users (id, email, name, title, role, clearance, salt, password_hash, phone)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (new_user_id, email, name, title, 'treasury_officer', 'level_1', salt, p_hash, normalized_phone))
 
                 # Create corporate operating account for the new user
                 new_acc_id = f"acc_chk_{secrets.token_hex(4)}"
@@ -806,8 +948,8 @@ class SecureRequestHandler(BaseHTTPRequestHandler):
                 """, (email, code_hash, expires_at, time.time()))
                 conn.commit()
 
-                masked_phone = phone[-4:].rjust(len(phone), '•') if len(phone) >= 4 else phone
-                print(f"[SECURE SMS DISPATCH (SERVER LOG ONLY)] Registration Recipient: {phone} | OTP Code: {otp_code} | Valid: 5 min", flush=True)
+                masked_phone = f"+91••••••{clean_digits[-4:]}" if len(clean_digits) >= 4 else phone
+                dispatch_sms(normalized_phone, otp_code, email)
 
                 self.send_json(201, {
                     "success": True,
@@ -835,7 +977,7 @@ class SecureRequestHandler(BaseHTTPRequestHandler):
                 """, (phone, code_hash, expires_at, time.time()))
                 conn.commit()
 
-                print(f"[SECURE SMS DISPATCH (SERVER LOG ONLY)] Send OTP Recipient: {phone} | OTP Code: {otp_code} | Valid: 5 min", flush=True)
+                dispatch_sms(phone, otp_code, phone)
                 self.send_json(200, {
                     "success": True,
                     "message": "Verification code dispatched via SMS."
