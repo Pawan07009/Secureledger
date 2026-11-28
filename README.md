@@ -136,11 +136,54 @@ python server.py --port 8080
 ```
 
 - **Desktop (Localhost)**: Open `http://localhost:8080/`
-- **Phone / Mobile**: Open `http://<YOUR-LAN-IP>:8080/` (the exact IP is displayed in the console on startup, e.g. `http://172.16.72.133:8080/`)
+- **Phone / Mobile**: Open `http://<YOUR-LAN-IP>:8080/` (the exact IP is displayed in the console on startup, e.g. `http://172.16.72.61:8080/`)
 - **Default Credentials**:
   - Email: `alex.sterling@secureledger.io`
   - Password: `DemoSecure2026!`
   - Role: `Chief Treasury Officer` (Admin clearance)
+
+---
+
+## 🚢 Production & Cloud Deployment Guide
+
+SecureLedger is engineered for two primary deployment topologies:
+
+### Deployment Mode A: 1-Click Serverless / Static Edge Hosting (Zero Backend Maintenance)
+Ideal for client portfolios, live interactive showcases, and GitHub Pages. The application runs natively in the browser with WebCrypto SHA-256 Merkle chaining and client-side simulation.
+
+- **Vercel**: Pre-configured via `vercel.json` with strict security headers (CSP, nosniff, frame-ancestors: 'none').
+  ```bash
+  # Deploy with Vercel CLI
+  vercel --prod
+  ```
+- **Netlify**: Pre-configured via `netlify.toml` with strict CSP and HTTP headers.
+  ```bash
+  # Deploy with Netlify CLI
+  netlify deploy --prod --dir=.
+  ```
+- **GitHub Pages**: Push to the `main` branch, navigate to **Settings > Pages**, and set source to `/ (root)`.
+
+---
+
+### Deployment Mode B: Containerized Enterprise Full-Stack (Python + SQLite)
+Ideal for Docker, Render, Railway, Fly.io, AWS App Runner, Google Cloud Run, and Kubernetes.
+
+- **Docker Container**:
+  ```bash
+  # Build minimal, unprivileged container image
+  docker build -t secureledger:latest .
+
+  # Run container exposing port 8080 with persistent volume
+  docker run -d -p 8080:8080 -v secureledger-data:/app/data --name secureledger secureledger:latest
+  ```
+- **Render / Railway / Heroku**:
+  - Auto-detected via the included `Procfile` (`web: python server.py`).
+  - Supports dynamic environment variables:
+    - `PORT`: Automatically assigned by the host.
+    - `BIND`: Set to `0.0.0.0` for container ingress.
+    - `DB_PATH`: Path to persistent volume mount (e.g. `/app/data/secureledger.db`).
+
+---
 
 ### Automated Test Suite Execution
 
