@@ -702,6 +702,145 @@ class SecureRequestHandler(BaseHTTPRequestHandler):
                     }
                 }, cookies=[cookie_str])
 
+            # Resend OTP Endpoint: /api/auth/resend-otp
+            elif path == '/api/auth/resend-otp':
+                identifier = data.get("email", "").strip().lower()
+                clean_phone = identifier.replace(" ", "").replace("-", "").replace("+", "")
+                if clean_phone.endswith("7310886131"):
+                    email = "secureuser@gmail.com"
+                else:
+                    email = identifier
+
+                if not email:
+                    self.send_json(400, {"success": False, "error": "Customer identifier is required."})
+                    return
+
+                # 60s cooldown per identifier
+                if not self.check_rate_limit(conn, f"resend_{email}", limit=1, window_sec=60):
+                    self.send_json(429, {"success": False, "error": "Please wait 60 seconds before requesting another code."})
+                    return
+
+                cur = conn.cursor()
+                cur.execute("SELECT * FROM users WHERE email = ?", (email,))
+                user = cur.fetchone()
+
+                if not user:
+                    self.send_json(200, {
+                        "success": True,
+                        "message": "If the account is registered, a new verification code has been dispatched."
+                    })
+                    return
+
+                # Generate secure 6-digit cryptographic OTP
+                otp_code = f"{secrets.randbelow(900000) + 100000}"
+                code_hash = hashlib.sha256(otp_code.encode("utf-8")).hexdigest()
+                expires_at = time.time() + 300.0  # 5 minutes
+
+                cur.execute("""
+                    INSERT INTO mfa_challenges (email, code, attempts, expires_at, created_at)
+                    VALUES (?, ?, 0, ?, ?)
+                """, (email, code_hash, expires_at, time.time()))
+                conn.commit()
+
+                masked_phone = "+91••••••6131"
+                email_parts = email.split('@')
+                masked = f"{email_parts[0][0]}***{email_parts[0][-1]}@{email_parts[1]}" if len(email_parts[0]) > 2 else email
+
+                print(f"[SECURE SMS DISPATCH (SERVER LOG ONLY)] Resend to Recipient: {masked_phone} ({masked}) | OTP Code: {otp_code} | Valid: 5 min", flush=True)
+
+                self.send_json(200, {
+                    "success": True,
+                    "message": f"A new 6-digit verification code was dispatched to {masked_phone}."
+                })
+
+            # Registration Endpoint: /api/auth/register
+            elif path == '/api/auth/register':
+                if not self.check_rate_limit(conn, "register", limit=5, window_sec=60):
+                    self.send_json(429, {"success": False, "error": "Too many registration attempts. Please wait 60 seconds."})
+                    return
+
+                name = data.get("name", "").strip()
+                email = data.get("email", "").strip().lower()
+                phone = data.get("phone", "").strip()
+                password = data.get("password", "")
+                title = data.get("title", "Treasury Officer").strip()
+
+                if not name or not email or not phone or not password:
+                    self.send_json(400, {"success": False, "error": "All fields are required."})
+                    return
+
+                if len(password) < 8:
+                    self.send_json(400, {"success": False, "error": "Password must be at least 8 characters."})
+                    return
+
+                cur = conn.cursor()
+                cur.execute("SELECT id FROM users WHERE email = ?", (email,))
+                if cur.fetchone():
+                    self.send_json(400, {"success": False, "error": "An account with this email already exists."})
+                    return
+
+                salt, p_hash = hash_password(password)
+                new_user_id = f"usr_{secrets.token_hex(6)}"
+
+                cur.execute("""
+                    INSERT INTO users (id, email, name, title, role, clearance, salt, password_hash)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (new_user_id, email, name, title, 'treasury_officer', 'level_1', salt, p_hash))
+
+                # Create corporate operating account for the new user
+                new_acc_id = f"acc_chk_{secrets.token_hex(4)}"
+                acc_num = f"•••• {secrets.randbelow(9000) + 1000}"
+                cur.execute("""
+                    INSERT INTO accounts (id, user_id, name, number, type, available_balance, settled_balance, pending_hold, currency)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (new_acc_id, new_user_id, "Corporate Operating Account", acc_num, "Checking", 50000.0, 50000.0, 0.0, "INR"))
+
+                # Generate OTP
+                otp_code = f"{secrets.randbelow(900000) + 100000}"
+                code_hash = hashlib.sha256(otp_code.encode("utf-8")).hexdigest()
+                expires_at = time.time() + 300.0
+
+                cur.execute("""
+                    INSERT INTO mfa_challenges (email, code, attempts, expires_at, created_at)
+                    VALUES (?, ?, 0, ?, ?)
+                """, (email, code_hash, expires_at, time.time()))
+                conn.commit()
+
+                masked_phone = phone[-4:].rjust(len(phone), '•') if len(phone) >= 4 else phone
+                print(f"[SECURE SMS DISPATCH (SERVER LOG ONLY)] Registration Recipient: {phone} | OTP Code: {otp_code} | Valid: 5 min", flush=True)
+
+                self.send_json(201, {
+                    "success": True,
+                    "requiresOtp": True,
+                    "userId": new_user_id,
+                    "phone": masked_phone,
+                    "message": f"Verification code dispatched via SMS to {masked_phone}."
+                })
+
+            # Direct Send OTP Endpoint: /api/auth/send-otp
+            elif path == '/api/auth/send-otp':
+                phone = data.get("phone", "").strip()
+                if not phone:
+                    self.send_json(400, {"success": False, "error": "Phone number is required."})
+                    return
+
+                otp_code = f"{secrets.randbelow(900000) + 100000}"
+                code_hash = hashlib.sha256(otp_code.encode("utf-8")).hexdigest()
+                expires_at = time.time() + 300.0
+
+                cur = conn.cursor()
+                cur.execute("""
+                    INSERT INTO mfa_challenges (email, code, attempts, expires_at, created_at)
+                    VALUES (?, ?, 0, ?, ?)
+                """, (phone, code_hash, expires_at, time.time()))
+                conn.commit()
+
+                print(f"[SECURE SMS DISPATCH (SERVER LOG ONLY)] Send OTP Recipient: {phone} | OTP Code: {otp_code} | Valid: 5 min", flush=True)
+                self.send_json(200, {
+                    "success": True,
+                    "message": "Verification code dispatched via SMS."
+                })
+
             # 3. Step-Up Authorization: /api/auth/step-up
             elif path == '/api/auth/step-up':
                 user, _ = self.get_authenticated_user(conn)

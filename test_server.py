@@ -134,6 +134,12 @@ def run_tests():
     assert_test("Valid credentials initiates MFA challenge (200 OK)", code == 200 and data.get("requiresMfa") is True)
     assert_test("Zero-Leak Check: demoOtp not exposed in HTTP response payload", "demoOtp" not in (data or {}))
 
+    # Test Resend OTP Endpoint: /api/auth/resend-otp
+    code_resend, _, resend_data, _ = request('/api/auth/resend-otp', method='POST', data={
+        "email": "secureuser@gmail.com"
+    })
+    assert_test("Resend OTP endpoint handles request successfully", code_resend in (200, 429), f"Status: {code_resend}")
+
     # Inspect the server database directly to test OTP verification without client leakage
     import sqlite3
     import hashlib

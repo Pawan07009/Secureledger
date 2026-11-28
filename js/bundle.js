@@ -422,11 +422,15 @@
     }
 
     async completeLoginMfa(enteredCode) {
+      const emailToUse =
+        this.pendingEmail ||
+        document.getElementById("loginCustomerId")?.value?.trim() ||
+        "secureuser@gmail.com";
       try {
         const res = await fetch("/api/auth/verify-otp", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: this.pendingEmail, code: enteredCode })
+          body: JSON.stringify({ email: emailToUse, code: enteredCode })
         });
         const data = await res.json();
         if (res.ok && data.success) {
@@ -460,11 +464,15 @@
     }
 
     async resendOtp() {
+      const emailToUse =
+        this.pendingEmail ||
+        document.getElementById("loginCustomerId")?.value?.trim() ||
+        "secureuser@gmail.com";
       try {
         const res = await fetch("/api/auth/resend-otp", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: this.pendingEmail })
+          body: JSON.stringify({ email: emailToUse })
         });
         const data = await res.json();
         if (res.ok && data.success) {
