@@ -12,9 +12,25 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap"
     rel="stylesheet">
+  <style>
+    /* Critical View Isolation: Never stack Welcome Gateway and Banking Dashboard */
+    body:not(.is-authenticated) .app-container {
+      display: none !important;
+    }
+    body.is-authenticated .welcome-gateway {
+      display: none !important;
+    }
+    .welcome-gateway {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 95;
+    }
+  </style>
 </head>
 
-<body>
+<body class="unauthenticated">
   <!-- Welcome Gateway & Motion Graphics Interface -->
   <div class="welcome-gateway" id="welcomeGateway" role="region" aria-label="Welcome and System Gateway">
     <!-- Ambient Background Motion Graphics -->

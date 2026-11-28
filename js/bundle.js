@@ -1292,6 +1292,10 @@
       onSessionExpire: () => {
         ui.closeModal("sessionWarningModal");
         ui.showToast("Session Terminated", "You have been logged out due to inactivity.", "danger");
+        document.body.classList.remove("is-authenticated");
+        document.body.classList.add("unauthenticated");
+        const gateway = document.getElementById("welcomeGateway");
+        if (gateway) gateway.classList.remove("dismissed");
         showLoginModal();
       },
       onSecurityLevelChange: (level, reason) => {
@@ -1368,8 +1372,12 @@
     // Initial Authentication Gate: Welcome Gateway
     const welcomeGateway = document.getElementById("welcomeGateway");
     if (auth.isAuthenticated) {
+      document.body.classList.add("is-authenticated");
+      document.body.classList.remove("unauthenticated");
       if (welcomeGateway) welcomeGateway.classList.add("dismissed");
     } else {
+      document.body.classList.remove("is-authenticated");
+      document.body.classList.add("unauthenticated");
       if (welcomeGateway) welcomeGateway.classList.remove("dismissed");
     }
 
@@ -2112,6 +2120,8 @@ SIMULATED FINTECH LEDGER • EDUCATIONAL DEMONSTRATION
     if (btnLogout) {
       btnLogout.addEventListener("click", () => {
         auth.logout();
+        document.body.classList.remove("is-authenticated");
+        document.body.classList.add("unauthenticated");
         const gateway = document.getElementById("welcomeGateway");
         if (gateway) gateway.classList.remove("dismissed");
       });
@@ -2138,6 +2148,8 @@ SIMULATED FINTECH LEDGER • EDUCATIONAL DEMONSTRATION
         if (res.requiresMfa) {
           const mfaRes = auth.completeLoginMfa(res.code);
           if (mfaRes.success) {
+            document.body.classList.add("is-authenticated");
+            document.body.classList.remove("unauthenticated");
             const gateway = document.getElementById("welcomeGateway");
             if (gateway) gateway.classList.add("dismissed");
             ui.showToast("Welcome to SecureLedger", "Authenticated as Alex Sterling (Chief Treasury Officer).", "success");
@@ -2237,6 +2249,8 @@ SIMULATED FINTECH LEDGER • EDUCATIONAL DEMONSTRATION
         if (res.success) {
           if (loginOtpInterval) clearInterval(loginOtpInterval);
           ui.closeModal("loginModal");
+          document.body.classList.add("is-authenticated");
+          document.body.classList.remove("unauthenticated");
           const gateway = document.getElementById("welcomeGateway");
           if (gateway) gateway.classList.add("dismissed");
           ui.showToast("Authentication Successful", `Welcome back, ${auth.currentUser.name}.`, "success");

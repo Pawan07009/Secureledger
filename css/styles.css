@@ -2342,6 +2342,17 @@ body {
 }
 
 /* ==========================================================================
+   Mutual Exclusivity: Welcome Gateway vs. Banking Dashboard
+   ========================================================================== */
+body:not(.is-authenticated) .app-container {
+  display: none !important;
+}
+
+body.is-authenticated .welcome-gateway {
+  display: none !important;
+}
+
+/* ==========================================================================
    Welcome Gateway & Motion Graphics Interface
    ========================================================================== */
 .welcome-gateway {
