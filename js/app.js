@@ -348,8 +348,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (res.requiresMfa) {
         document.getElementById("loginCredentialsStep").style.display = "none";
         document.getElementById("loginMfaStep").style.display = "block";
-        document.getElementById("loginDemoMfaCode").textContent = res.code;
-        ui.showToast("MFA Passcode Sent", `Simulated OTP: INR{res.code}`, "info");
+        ui.showToast("MFA Security Code Sent", "Verification code dispatched via SMS.", "info");
       }
     });
   }

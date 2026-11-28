@@ -1,0 +1,19 @@
+{
+  "name": "secureledger",
+  "version": "3.0.0",
+  "description": "SecureLedger - Enterprise FinTech Banking Access & Ledger Simulation",
+  "type": "module",
+  "scripts": {
+    "start": "python server.py --port 8080",
+    "test": "python test_server.py"
+  },
+  "keywords": [
+    "fintech",
+    "banking",
+    "security",
+    "otp",
+    "merkle-chain"
+  ],
+  "author": "SecureLedger Engineering",
+  "license": "MIT"
+}

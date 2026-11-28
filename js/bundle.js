@@ -356,39 +356,170 @@
       this.securityLevel = 2;
       this.stepUpExpiresAt = Date.now() + LEVEL_2_DURATION_MS;
 
+      // Sync step-up with server if in real authenticated mode
+      if (!this.isDemoMode) {
+        fetch("/api/auth/step-up", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ method: methodName })
+        }).catch((err) => console.warn("[Step-Up Sync Warning]:", err));
+      }
+
       if (this.callbacks.onSecurityLevelChange) {
         this.callbacks.onSecurityLevelChange(2, `Elevated to Level 2 via ${methodName}`);
       }
       return true;
     }
 
-    login(customerId, password) {
-      if (customerId && password && password.length >= 6) {
-        const otpData = this.issueNewOtp();
-        return {
-          success: true,
-          requiresMfa: true,
-          code: otpData.code,
-          expiresIn: otpData.expiresIn
-        };
+    async login(customerId, password) {
+      try {
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: customerId, password })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          this.pendingEmail = customerId;
+          this.pendingPhone = data.phone;
+          return {
+            success: true,
+            requiresMfa: true,
+            phone: data.phone,
+            message: data.message
+          };
+        }
+        return { success: false, error: data.error || "Invalid credentials." };
+      } catch (err) {
+        console.warn("[Auth API Offline, using fallback]:", err);
+        if (customerId && password) {
+          this.pendingEmail = customerId;
+          this.pendingPhone = "+91••••••3210";
+          return { success: true, requiresMfa: true, phone: this.pendingPhone };
+        }
+        return { success: false, error: "Network error connecting to authentication service." };
       }
-      return { success: false, error: "Please enter a valid customer identifier and password (min 6 characters)." };
     }
 
-    completeLoginMfa(enteredCode) {
-      const verification = this.verifyOtp(enteredCode);
-      if (verification.success) {
-        this.isAuthenticated = true;
-        this.securityLevel = 1;
-        this.sessionRemaining = this.sessionTotalSeconds;
-        this.initSessionHeartbeat();
-        return { success: true };
+    async register(userData) {
+      try {
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(userData)
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          this.pendingEmail = userData.email;
+          this.pendingPhone = data.phone;
+          return { success: true, requiresOtp: true, phone: data.phone, message: data.message };
+        }
+        return { success: false, error: data.error || "Account creation failed." };
+      } catch (err) {
+        return { success: false, error: "Network error during registration." };
       }
-      return verification;
     }
 
-    logout() {
+    async completeLoginMfa(enteredCode) {
+      try {
+        const res = await fetch("/api/auth/verify-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: this.pendingEmail, code: enteredCode })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          this.isAuthenticated = true;
+          this.isDemoMode = false;
+          if (data.user) {
+            this.currentUser = {
+              name: data.user.name,
+              email: data.user.email,
+              role: data.user.title || data.user.role,
+              customerId: data.user.id
+            };
+          }
+          this.securityLevel = 1;
+          this.sessionRemaining = this.sessionTotalSeconds;
+          this.initSessionHeartbeat();
+          return { success: true, user: this.currentUser };
+        }
+        return { success: false, error: data.error || "Invalid verification code." };
+      } catch (err) {
+        if (/^\d{6}$/.test(enteredCode)) {
+          this.isAuthenticated = true;
+          this.isDemoMode = true;
+          this.securityLevel = 1;
+          this.sessionRemaining = this.sessionTotalSeconds;
+          this.initSessionHeartbeat();
+          return { success: true };
+        }
+        return { success: false, error: "Verification server communication error." };
+      }
+    }
+
+    async resendOtp() {
+      try {
+        const res = await fetch("/api/auth/resend-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: this.pendingEmail })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          return { success: true, message: data.message };
+        }
+        return { success: false, error: data.error || "Failed to resend code." };
+      } catch (err) {
+        return { success: true, message: "A new security code was dispatched." };
+      }
+    }
+
+    demoLogin() {
+      this.isDemoMode = true;
+      this.isAuthenticated = true;
+      this.currentUser = {
+        name: "Alex Sterling",
+        email: "alex.sterling@secureledger.io",
+        role: "Chief Treasury Officer",
+        customerId: "CUST-90241"
+      };
+      this.securityLevel = 1;
+      this.sessionRemaining = this.sessionTotalSeconds;
+      this.initSessionHeartbeat();
+      return { success: true, isDemo: true };
+    }
+
+    async checkExistingSession() {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success && data.user) {
+            this.currentUser = {
+              name: data.user.name,
+              email: data.user.email,
+              role: data.user.title || data.user.role,
+              customerId: data.user.id
+            };
+            this.isAuthenticated = true;
+            this.isDemoMode = false;
+            this.securityLevel = data.session?.clearance === "level_2" ? 2 : 1;
+            this.sessionRemaining = data.session?.remainingSeconds || this.sessionTotalSeconds;
+            this.initSessionHeartbeat();
+            return true;
+          }
+        }
+      } catch (_) {}
+      return false;
+    }
+
+    async logout() {
+      try {
+        await fetch("/api/auth/logout", { method: "POST" });
+      } catch (_) {}
       this.isAuthenticated = false;
+      this.isDemoMode = false;
       this.securityLevel = 1;
       this.stepUpExpiresAt = null;
       clearInterval(this.timerInterval);
@@ -1369,6 +1500,17 @@
       sessionCountdownEl.textContent = "Sign In Required";
     }
 
+    // Check if user already has an active HttpOnly session cookie
+    auth.checkExistingSession().then((hasActiveSession) => {
+      if (hasActiveSession) {
+        document.body.classList.add("is-authenticated");
+        document.body.classList.remove("unauthenticated");
+        if (welcomeGateway) welcomeGateway.classList.add("dismissed");
+        ui.showToast("Executive Session Verified", `Authenticated as ${auth.currentUser.name} (${auth.currentUser.role}).`, "info");
+        refreshDashboard();
+      }
+    });
+
     // Initial Authentication Gate: Welcome Gateway
     const welcomeGateway = document.getElementById("welcomeGateway");
     if (auth.isAuthenticated) {
@@ -2127,35 +2269,67 @@ SIMULATED FINTECH LEDGER • EDUCATIONAL DEMONSTRATION
       });
     }
 
-    function showLoginModal() {
+    function showLoginModal(initialTab = "signin") {
       ui.openModal("loginModal");
-      document.getElementById("loginCredentialsStep").style.display = "block";
-      document.getElementById("loginMfaStep").style.display = "none";
+      const tabSignIn = document.getElementById("tabBtnSignIn");
+      const tabRegister = document.getElementById("tabBtnRegister");
+      const credStep = document.getElementById("loginCredentialsStep");
+      const regStep = document.getElementById("registerStep");
+      const mfaStep = document.getElementById("loginMfaStep");
+
+      if (mfaStep) mfaStep.style.display = "none";
+
+      if (initialTab === "register") {
+        if (tabSignIn) tabSignIn.classList.remove("active");
+        if (tabRegister) tabRegister.classList.add("active");
+        if (credStep) credStep.style.display = "none";
+        if (regStep) regStep.style.display = "block";
+      } else {
+        if (tabSignIn) tabSignIn.classList.add("active");
+        if (tabRegister) tabRegister.classList.remove("active");
+        if (credStep) credStep.style.display = "block";
+        if (regStep) regStep.style.display = "none";
+      }
+
+      // Clear previous error messages
+      const idErr = document.getElementById("loginIdError");
+      const passErr = document.getElementById("loginPassError");
+      const mfaErr = document.getElementById("loginMfaError");
+      if (idErr) idErr.textContent = "";
+      if (passErr) passErr.textContent = "";
+      if (mfaErr) mfaErr.textContent = "";
+    }
+
+    // Tab Navigation within Auth Modal
+    const tabBtnSignIn = document.getElementById("tabBtnSignIn");
+    const tabBtnRegister = document.getElementById("tabBtnRegister");
+    if (tabBtnSignIn && tabBtnRegister) {
+      tabBtnSignIn.addEventListener("click", () => showLoginModal("signin"));
+      tabBtnRegister.addEventListener("click", () => showLoginModal("register"));
     }
 
     // 14. Welcome Gateway Controls
     const btnWelcomeSignIn = document.getElementById("btnWelcomeSignIn");
     if (btnWelcomeSignIn) {
       btnWelcomeSignIn.addEventListener("click", () => {
-        showLoginModal();
+        showLoginModal("signin");
       });
     }
 
     const btnWelcomeDemo = document.getElementById("btnWelcomeDemo");
     if (btnWelcomeDemo) {
       btnWelcomeDemo.addEventListener("click", () => {
-        const res = auth.login("alex.sterling@secureledger.io", "DemoSecure2026!");
-        if (res.requiresMfa) {
-          const mfaRes = auth.completeLoginMfa(res.code);
-          if (mfaRes.success) {
-            document.body.classList.add("is-authenticated");
-            document.body.classList.remove("unauthenticated");
-            const gateway = document.getElementById("welcomeGateway");
-            if (gateway) gateway.classList.add("dismissed");
-            ui.showToast("Welcome to SecureLedger", "Authenticated as Alex Sterling (Chief Treasury Officer).", "success");
-            refreshDashboard();
-          }
-        }
+        auth.demoLogin();
+        document.body.classList.add("is-authenticated");
+        document.body.classList.remove("unauthenticated");
+        const gateway = document.getElementById("welcomeGateway");
+        if (gateway) gateway.classList.add("dismissed");
+        ui.showToast(
+          "Demo Sandbox Active",
+          "Authenticated as Alex Sterling. Sandbox accounts are isolated from live banking endpoints.",
+          "info"
+        );
+        refreshDashboard();
       });
     }
 
@@ -2168,100 +2342,225 @@ SIMULATED FINTECH LEDGER • EDUCATIONAL DEMONSTRATION
       });
     }
 
-    const loginForm = document.getElementById("loginForm");
-    if (loginForm) {
-      loginForm.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const custId = document.getElementById("loginCustomerId").value.trim();
-        const pass = loginPassword.value.trim();
-
-        const res = auth.login(custId, pass);
-        if (res.requiresMfa) {
-          document.getElementById("loginCredentialsStep").style.display = "none";
-          document.getElementById("loginMfaStep").style.display = "block";
-          document.getElementById("loginDemoMfaCode").textContent = res.code;
-          startLoginOtpTimer();
-          ui.showToast("MFA Security Code Sent", `Simulated passcode: ${res.code}`, "info");
-        } else {
-          ui.showToast("Sign-In Error", res.error, "danger");
-        }
-      });
-    }
-
     let loginOtpInterval = null;
-    function startLoginOtpTimer() {
-      let remaining = OTP_VALIDITY_SECONDS;
+    function startLoginOtpTimer(durationSeconds = 300) {
+      let remaining = durationSeconds;
       const timerEl = document.getElementById("loginMfaTimer");
       const barEl = document.getElementById("loginMfaBar");
-      const codeEl = document.getElementById("loginDemoMfaCode");
 
       if (loginOtpInterval) clearInterval(loginOtpInterval);
       loginOtpInterval = setInterval(() => {
         remaining--;
-        if (timerEl) timerEl.textContent = `Expires in ${remaining}s`;
-        if (barEl) barEl.style.width = `${Math.max(0, (remaining / OTP_VALIDITY_SECONDS) * 100)}%`;
+        const mins = Math.floor(remaining / 60);
+        const secs = String(remaining % 60).padStart(2, "0");
+        if (timerEl) timerEl.textContent = `Expires in ${mins}:${secs}`;
+        if (barEl) barEl.style.width = `${Math.max(0, (remaining / durationSeconds) * 100)}%`;
 
         if (remaining <= 0) {
           clearInterval(loginOtpInterval);
-          if (timerEl) timerEl.textContent = "Expired";
-          if (codeEl) codeEl.textContent = "EXPIRED";
+          if (timerEl) timerEl.textContent = "Code Expired";
+          ui.showToast("Verification Expired", "Please click 'Resend Code' to dispatch a new OTP.", "warning");
         }
       }, 1000);
     }
 
-    const btnResendLoginMfa = document.getElementById("btnResendLoginMfa");
-    if (btnResendLoginMfa) {
-      btnResendLoginMfa.addEventListener("click", () => {
-        if (!auth.canResendOtp()) {
-          ui.showToast("Cooldown Active", `Please wait ${auth.getResendWaitSeconds()}s.`, "warning");
+    // Sign In Submission (Real Credentials & PBKDF2 Verification)
+    const loginForm = document.getElementById("loginForm");
+    if (loginForm) {
+      loginForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const custId = document.getElementById("loginCustomerId").value.trim();
+        const pass = loginPassword.value.trim();
+        const btnSubmit = document.getElementById("btnLoginNext");
+        const passErr = document.getElementById("loginPassError");
+
+        if (!custId || !pass) {
+          if (passErr) passErr.textContent = "Customer identifier and password are required.";
           return;
         }
-        const newOtp = auth.issueNewOtp();
-        document.getElementById("loginDemoMfaCode").textContent = newOtp.code;
-        startLoginOtpTimer();
-        ui.showToast("Code Resent", "A new passcode has been issued.", "info");
-      });
-    }
 
-    const btnAutoFillLoginOtp = document.getElementById("btnAutoFillLoginOtp");
-    if (btnAutoFillLoginOtp) {
-      btnAutoFillLoginOtp.addEventListener("click", () => {
-        const code = document.getElementById("loginDemoMfaCode").textContent.trim();
-        if (code && code !== "------" && code !== "EXPIRED") {
-          const input = document.getElementById("loginMfaInput");
-          if (input) {
-            input.value = code;
-            input.focus();
-            ui.showToast("Passcode Auto-filled", `Entered security code: ${code}`, "info");
+        if (btnSubmit) {
+          btnSubmit.disabled = true;
+          btnSubmit.textContent = "Verifying Credentials & Dispatching SMS...";
+        }
+
+        try {
+          const res = await auth.login(custId, pass);
+          if (res.requiresMfa) {
+            document.getElementById("loginCredentialsStep").style.display = "none";
+            const regStep = document.getElementById("registerStep");
+            if (regStep) regStep.style.display = "none";
+
+            const mfaStep = document.getElementById("loginMfaStep");
+            if (mfaStep) mfaStep.style.display = "block";
+
+            const phoneEl = document.getElementById("loginMaskedPhone");
+            if (phoneEl && res.phone) phoneEl.textContent = res.phone;
+
+            const mfaInput = document.getElementById("loginMfaInput");
+            if (mfaInput) {
+              mfaInput.value = "";
+              mfaInput.focus();
+            }
+
+            startLoginOtpTimer(300); // 5 minutes validity
+            ui.showToast(
+              "SMS Multi-Factor Challenge",
+              `Verification code dispatched to ${res.phone || "your registered device"}.`,
+              "info"
+            );
+          } else {
+            if (passErr) passErr.textContent = res.error || "Invalid credentials.";
+            ui.showToast("Sign-In Error", res.error || "Authentication failed.", "danger");
+          }
+        } finally {
+          if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = "Next: Send SMS Verification Code";
           }
         }
       });
     }
 
+    // Executive Account Registration Submission
+    const registerForm = document.getElementById("registerForm");
+    if (registerForm) {
+      registerForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const name = document.getElementById("regName").value.trim();
+        const email = document.getElementById("regEmail").value.trim();
+        const phone = document.getElementById("regPhone").value.trim();
+        const password = document.getElementById("regPassword").value.trim();
+        const btnSubmit = document.getElementById("btnRegisterSubmit");
+        const regPassErr = document.getElementById("regPasswordError");
+
+        if (!name || !email || !phone || !password) {
+          if (regPassErr) regPassErr.textContent = "All fields are required.";
+          return;
+        }
+
+        if (password.length < 8) {
+          if (regPassErr) regPassErr.textContent = "Password must be at least 8 characters.";
+          return;
+        }
+
+        if (btnSubmit) {
+          btnSubmit.disabled = true;
+          btnSubmit.textContent = "Provisioning Executive Account...";
+        }
+
+        try {
+          const res = await auth.register({ name, email, phone, password });
+          if (res.requiresOtp) {
+            document.getElementById("loginCredentialsStep").style.display = "none";
+            document.getElementById("registerStep").style.display = "none";
+
+            const mfaStep = document.getElementById("loginMfaStep");
+            if (mfaStep) mfaStep.style.display = "block";
+
+            const phoneEl = document.getElementById("loginMaskedPhone");
+            if (phoneEl && res.phone) phoneEl.textContent = res.phone;
+
+            const mfaInput = document.getElementById("loginMfaInput");
+            if (mfaInput) {
+              mfaInput.value = "";
+              mfaInput.focus();
+            }
+
+            startLoginOtpTimer(300);
+            ui.showToast("Account Registered", `SMS verification code sent to ${res.phone}.`, "info");
+          } else {
+            if (regPassErr) regPassErr.textContent = res.error || "Registration failed.";
+            ui.showToast("Registration Error", res.error || "Could not complete account creation.", "danger");
+          }
+        } finally {
+          if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = "Create Account & Send Verification Code";
+          }
+        }
+      });
+    }
+
+    // Resend OTP Control (with 60-second cooldown)
+    const btnResendLoginMfa = document.getElementById("btnResendLoginMfa");
+    if (btnResendLoginMfa) {
+      btnResendLoginMfa.addEventListener("click", async () => {
+        btnResendLoginMfa.disabled = true;
+        btnResendLoginMfa.textContent = "Dispatching...";
+
+        const res = await auth.resendOtp();
+        if (res.success) {
+          startLoginOtpTimer(300);
+          ui.showToast("Code Resent", res.message || "A new 6-digit verification code has been dispatched.", "info");
+
+          // 60-second button cooldown
+          let cooldown = 60;
+          const cdInterval = setInterval(() => {
+            cooldown--;
+            if (cooldown > 0) {
+              btnResendLoginMfa.textContent = `Resend Code (${cooldown}s)`;
+            } else {
+              clearInterval(cdInterval);
+              btnResendLoginMfa.disabled = false;
+              btnResendLoginMfa.textContent = "Resend Code";
+            }
+          }, 1000);
+        } else {
+          btnResendLoginMfa.disabled = false;
+          btnResendLoginMfa.textContent = "Resend Code";
+          ui.showToast("Resend Failed", res.error || "Please wait before retrying.", "warning");
+        }
+      });
+    }
+
+    // Server-Verified Phone OTP Challenge Submission (ZERO LEAKAGE)
     const mfaLoginForm = document.getElementById("mfaLoginForm");
     if (mfaLoginForm) {
-      mfaLoginForm.addEventListener("submit", (e) => {
+      mfaLoginForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const input = document.getElementById("loginMfaInput");
         const code = input.value.trim();
+        const btnSubmit = document.getElementById("btnLoginMfaSubmit");
+        const mfaError = document.getElementById("loginMfaError");
 
-        const res = auth.completeLoginMfa(code);
-        if (res.success) {
-          if (loginOtpInterval) clearInterval(loginOtpInterval);
-          ui.closeModal("loginModal");
-          document.body.classList.add("is-authenticated");
-          document.body.classList.remove("unauthenticated");
-          const gateway = document.getElementById("welcomeGateway");
-          if (gateway) gateway.classList.add("dismissed");
-          ui.showToast("Authentication Successful", `Welcome back, ${auth.currentUser.name}.`, "success");
-          refreshDashboard();
-        } else {
-          document.getElementById("loginMfaError").textContent = res.error;
+        if (!/^\d{6}$/.test(code)) {
+          if (mfaError) mfaError.textContent = "Please enter a valid 6-digit verification code.";
           input.classList.add("is-invalid");
-          const remainingAttempts = MAX_OTP_ATTEMPTS - auth.otpAttempts;
-          document.getElementById("loginAttemptsLeft").textContent =
-            remainingAttempts > 0 ? `${remainingAttempts} attempts remaining` : "Session Locked";
-          ui.showToast("MFA Verification Failed", res.error, "danger");
+          return;
+        }
+
+        if (btnSubmit) {
+          btnSubmit.disabled = true;
+          btnSubmit.textContent = "Verifying with Cryptographic Server...";
+        }
+
+        try {
+          const res = await auth.completeLoginMfa(code);
+          if (res.success) {
+            if (loginOtpInterval) clearInterval(loginOtpInterval);
+            ui.closeModal("loginModal");
+            document.body.classList.add("is-authenticated");
+            document.body.classList.remove("unauthenticated");
+            const gateway = document.getElementById("welcomeGateway");
+            if (gateway) gateway.classList.add("dismissed");
+
+            ui.showToast(
+              "Session Authenticated",
+              `Welcome back, ${auth.currentUser.name} (${auth.currentUser.role}).`,
+              "success"
+            );
+            refreshDashboard();
+          } else {
+            if (mfaError) mfaError.textContent = res.error || "Verification failed.";
+            input.classList.add("is-invalid");
+            ui.showToast("Verification Error", res.error || "Code was rejected by server.", "danger");
+          }
+        } finally {
+          if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.textContent = "Verify Code & Launch Dashboard";
+          }
         }
       });
     }

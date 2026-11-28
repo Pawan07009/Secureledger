@@ -131,8 +131,26 @@ def run_tests():
         "email": "alex.sterling@secureledger.io",
         "password": "DemoSecure2026!"
     })
-    otp_code = data.get("demoOtp") if data else None
-    assert_test("Valid credentials initiates MFA challenge (200 OK)", code == 200 and data.get("requiresMfa") is True, f"Issued OTP: {otp_code}")
+    assert_test("Valid credentials initiates MFA challenge (200 OK)", code == 200 and data.get("requiresMfa") is True)
+    assert_test("Zero-Leak Check: demoOtp not exposed in HTTP response payload", "demoOtp" not in (data or {}))
+
+    # Inspect the server database directly to test OTP verification without client leakage
+    import sqlite3
+    import hashlib
+    db_conn = sqlite3.connect('secureledger.db')
+    cur = db_conn.cursor()
+    cur.execute("SELECT code FROM mfa_challenges WHERE email = 'alex.sterling@secureledger.io' ORDER BY id DESC LIMIT 1")
+    row = cur.fetchone()
+    stored_hash = row[0] if row else ""
+    db_conn.close()
+
+    otp_code = None
+    for i in range(100000, 1000000):
+        if hashlib.sha256(str(i).encode()).hexdigest() == stored_hash:
+            otp_code = str(i)
+            break
+
+    assert_test("Server-Side Challenge Stored as SHA-256 Hash", bool(stored_hash and len(stored_hash) == 64), f"Hash: {stored_hash[:16]}...")
 
     code, _, data, _ = request('/api/auth/verify-otp', method='POST', data={
         "email": "alex.sterling@secureledger.io",

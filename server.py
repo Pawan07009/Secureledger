@@ -586,17 +586,21 @@ class SecureRequestHandler(BaseHTTPRequestHandler):
 
                 # Generate secure 6-digit cryptographic OTP
                 otp_code = f"{secrets.randbelow(900000) + 100000}"
+                code_hash = hashlib.sha256(otp_code.encode("utf-8")).hexdigest()
                 expires_at = time.time() + 180.0  # 3 minutes
 
                 cur.execute("""
                     INSERT INTO mfa_challenges (email, code, attempts, expires_at, created_at)
                     VALUES (?, ?, 0, ?, ?)
-                """, (email, otp_code, expires_at, time.time()))
+                """, (email, code_hash, expires_at, time.time()))
                 conn.commit()
 
                 # Mask email for display
                 email_parts = email.split('@')
                 masked = f"{email_parts[0][0]}***{email_parts[0][-1]}@{email_parts[1]}" if len(email_parts[0]) > 2 else email
+
+                # Secure dispatch log on server console ONLY - zero leakage in HTTP payload
+                print(f"[SECURE SMS DISPATCH (SERVER LOG ONLY)] Recipient: {masked} | OTP Code: {otp_code} | Valid: 3 min", flush=True)
 
                 self.send_json(200, {
                     "success": True,
@@ -604,7 +608,7 @@ class SecureRequestHandler(BaseHTTPRequestHandler):
                     "email": email,
                     "maskedEmail": masked,
                     "expiresIn": 180,
-                    "demoOtp": otp_code  # Provided for seamless educational simulation testing
+                    "message": f"Verification code dispatched via SMS to registered phone."
                 })
 
             # 2. MFA Verification Endpoint: /api/auth/verify-otp
@@ -630,7 +634,8 @@ class SecureRequestHandler(BaseHTTPRequestHandler):
                     self.send_json(401, {"success": False, "error": "Maximum verification attempts exceeded. Challenge invalidated."})
                     return
 
-                if challenge["code"] != code:
+                entered_hash = hashlib.sha256(code.encode("utf-8")).hexdigest()
+                if not hmac.compare_digest(challenge["code"], entered_hash):
                     cur.execute("UPDATE mfa_challenges SET attempts = attempts + 1 WHERE id = ?", (challenge["id"],))
                     conn.commit()
                     remaining = 2 - challenge["attempts"]

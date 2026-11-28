@@ -47,10 +47,12 @@
           <span class="badge-tag small-tag">OS v3.0</span>
         </div>
         <button type="button" class="btn btn-icon btn-sm" id="btnGatewayThemeToggle" aria-label="Toggle theme">
-          <svg class="theme-icon-dark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <svg class="theme-icon-dark" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" aria-hidden="true">
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
           </svg>
-          <svg class="theme-icon-light" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <svg class="theme-icon-light" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" aria-hidden="true">
             <circle cx="12" cy="12" r="5"></circle>
             <line x1="12" y1="1" x2="12" y2="3"></line>
             <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -85,12 +87,14 @@
             Institutional Liquidity &amp; <span class="gradient-text">Cryptographic Ledger</span>
           </h1>
           <p class="gateway-subtitle">
-            Enterprise banking simulation featuring dual-tier clearance, WebCrypto SHA-256 Merkle chain verification, contextual step-up authorization, and real-time corporate liquidity controls.
+            Enterprise banking simulation featuring dual-tier clearance, WebCrypto SHA-256 Merkle chain verification,
+            contextual step-up authorization, and real-time corporate liquidity controls.
           </p>
 
           <div class="gateway-actions">
             <button type="button" class="btn btn-primary btn-gateway-cta" id="btnWelcomeSignIn">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                aria-hidden="true">
                 <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
                 <polyline points="10 17 15 12 10 7"></polyline>
                 <line x1="15" y1="12" x2="3" y2="12"></line>
@@ -99,7 +103,8 @@
             </button>
 
             <button type="button" class="btn btn-secondary btn-gateway-secondary" id="btnWelcomeDemo">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                aria-hidden="true">
                 <polygon points="5 3 19 12 5 21 5 3"></polygon>
               </svg>
               <span>Explore Demo Environment</span>
@@ -435,7 +440,7 @@
                 </svg>
               </div>
             </div>
-            <div class="metric-value" id="metricAvailableBalance">₹0.00</div>
+            <div class="metric-value" id="metricAvailableBalance">₹24,850.75</div>
             <div class="metric-footer">
               <span class="status-indicator-green">● Immediately Liquid</span>
               <span id="metricAccountNum">Checking •••• 8492</span>
@@ -452,7 +457,7 @@
                 </svg>
               </div>
             </div>
-            <div class="metric-value" id="metricSettledBalance">₹0.00</div>
+            <div class="metric-value" id="metricSettledBalance">₹25,450.75</div>
             <div class="metric-footer">
               <span>Cleared & Confirmed</span>
               <span>Reconciled Daily</span>
@@ -468,7 +473,7 @@
                 </svg>
               </div>
             </div>
-            <div class="metric-value warning-text" id="metricPendingHold">₹0.00</div>
+            <div class="metric-value warning-text" id="metricPendingHold">₹600.00</div>
             <div class="metric-footer">
               <span>Outgoing Holds</span>
               <span>Awaiting Settlement</span>
@@ -555,7 +560,7 @@
               <div class="control-row">
                 <div class="control-desc">
                   <span class="control-title">Monthly Limit Utilization</span>
-                  <span class="control-sub" id="cardLimitUsageText">₹12,450 spent of ₹50,000 limit (24%)</span>
+                  <span class="control-sub" id="cardLimitUsageText">₹12,450 spent of ₹50,00,000 corporate limit (0.25%)</span>
                 </div>
               </div>
               <div class="budget-progress-track">
@@ -1020,7 +1025,7 @@
         <div class="receipt-box" id="printableReceipt">
           <div class="receipt-header">
             <h4>SECURELEDGER TRANSACTION RECEIPT</h4>
-            <span class="receipt-ref" id="receiptRefId">REF: TXN-20261127-00000</span>
+            <span class="receipt-ref" id="receiptRefId">REF: TXN-PENDING-CONFIRMATION</span>
           </div>
 
           <div class="receipt-details">
@@ -1177,20 +1182,28 @@
       <div class="modal-header">
         <div class="modal-title-group">
           <div class="brand-icon small-brand-icon" aria-hidden="true">S</div>
-          <h3 id="loginModalTitle">SecureLedger Portal Sign-In</h3>
+          <h3 id="loginModalTitle">SecureLedger Executive Access & Authentication</h3>
         </div>
+        <button type="button" class="modal-close" data-close="loginModal" aria-label="Close authentication modal">&times;</button>
       </div>
 
-      <!-- Step 1: Customer ID & Password -->
+      <!-- Navigation Tabs: Sign In vs Register -->
+      <div class="modal-body" style="padding-bottom: 0;">
+        <nav class="auth-tabs-nav" id="authTabsNav" aria-label="Authentication Modes">
+          <button type="button" class="auth-tab-btn active" id="tabBtnSignIn">Sign In</button>
+          <button type="button" class="auth-tab-btn" id="tabBtnRegister">Create Account</button>
+        </nav>
+      </div>
+
+      <!-- Step 1A: Customer ID & Password Sign In -->
       <div id="loginCredentialsStep">
         <form id="loginForm" novalidate>
-          <div class="modal-body">
+          <div class="modal-body" style="padding-top: 0;">
             <div class="form-group">
-              <label for="loginCustomerId">Customer Identifier *</label>
-              <input type="text" id="loginCustomerId" class="form-control" value="alex.sterling@secureledger.io"
-                required>
+              <label for="loginCustomerId">Customer Identifier or Phone *</label>
+              <input type="text" id="loginCustomerId" class="form-control" value="alex.sterling@secureledger.io" placeholder="Email or +91 Phone" required>
               <span class="field-error-msg" id="loginIdError" role="alert"></span>
-              <span class="form-helper">Demo User: alex.sterling@secureledger.io</span>
+              <span class="form-helper">Demo User: alex.sterling@secureledger.io (+91 98765 43210)</span>
             </div>
 
             <div class="form-group">
@@ -1210,25 +1223,67 @@
             </div>
 
             <div class="login-compliance-note">
-              🔒 Protected by 256-bit TLS simulated cryptographic handshake.
+              🔒 Protected by server-side PBKDF2 hash verification &amp; SMS OTP multi-factor challenge.
             </div>
           </div>
 
           <div class="modal-footer">
             <button type="submit" class="btn btn-primary full-width-btn" id="btnLoginNext">
-              Next: Two-Factor Authentication
+              Next: Send SMS Verification Code
             </button>
           </div>
         </form>
       </div>
 
-      <!-- Step 2: MFA Code Challenge -->
+      <!-- Step 1B: Executive Account Registration Form -->
+      <div id="registerStep" style="display: none;">
+        <form id="registerForm" novalidate>
+          <div class="modal-body" style="padding-top: 0;">
+            <div class="form-group">
+              <label for="regName">Full Name *</label>
+              <input type="text" id="regName" class="form-control" placeholder="e.g. Elena Rostova" required>
+              <span class="field-error-msg" id="regNameError" role="alert"></span>
+            </div>
+
+            <div class="form-group">
+              <label for="regEmail">Corporate Email *</label>
+              <input type="email" id="regEmail" class="form-control" placeholder="officer@secureledger.io" required>
+              <span class="field-error-msg" id="regEmailError" role="alert"></span>
+            </div>
+
+            <div class="form-group">
+              <label for="regPhone">Mobile Phone for SMS OTP (+91) *</label>
+              <input type="tel" id="regPhone" class="form-control" placeholder="+91 98765 00000" required>
+              <span class="field-error-msg" id="regPhoneError" role="alert"></span>
+              <span class="form-helper">India format supported (TRAI DLT compliant gateways)</span>
+            </div>
+
+            <div class="form-group">
+              <label for="regPassword">Treasury Password *</label>
+              <input type="password" id="regPassword" class="form-control" placeholder="Min 8 chars, 1 upper, 1 lower, 1 digit" required>
+              <span class="field-error-msg" id="regPasswordError" role="alert"></span>
+            </div>
+
+            <div class="login-compliance-note">
+              🔒 Serverless PostgreSQL / In-Memory ACID storage with salted PBKDF2 cryptography.
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary full-width-btn" id="btnRegisterSubmit">
+              Create Account &amp; Send Verification Code
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Step 2: Server-Verified Phone OTP Challenge (ZERO LEAKAGE) -->
       <div id="loginMfaStep" style="display: none;">
         <form id="mfaLoginForm" novalidate>
           <div class="modal-body">
             <div class="text-center-box">
-              <h4>Two-Factor Authentication</h4>
-              <p>Enter the 6-digit cryptographic security code delivered to your simulated token.</p>
+              <h4>SMS Multi-Factor Authentication</h4>
+              <p>Enter the 6-digit cryptographic security code dispatched via SMS to your registered device (<strong id="loginMaskedPhone">+91••••••3210</strong>).</p>
             </div>
 
             <div class="form-group">
@@ -1240,24 +1295,26 @@
 
             <div class="otp-card">
               <div class="otp-card-header">
-                <span>Simulated Security Code: <strong id="loginDemoMfaCode">------</strong></span>
-                <span class="otp-timer" id="loginMfaTimer">Expires in 60s</span>
+                <span>Dispatch Status: <strong style="color: var(--accent-emerald);">SMS Dispatched</strong></span>
+                <span class="otp-timer" id="loginMfaTimer">Expires in 300s</span>
               </div>
               <div class="otp-progress-track">
                 <div class="otp-progress-bar" id="loginMfaBar"></div>
               </div>
               <div class="otp-actions">
                 <button type="button" class="btn-text-action" id="btnResendLoginMfa">Resend Code</button>
-                <button type="button" class="btn-text-action" id="btnAutoFillLoginOtp"
-                  style="color: var(--accent-cyan); font-weight: 600;">Auto-fill Code</button>
                 <span class="attempts-left" id="loginAttemptsLeft">3 attempts remaining</span>
               </div>
+            </div>
+
+            <div class="login-compliance-note" style="margin-top: 12px;">
+              🔒 Zero-leak security: Codes are verified exclusively server-side via SHA-256 hash evaluation. Plaintext OTP is never returned in client API responses.
             </div>
           </div>
 
           <div class="modal-footer">
             <button type="submit" class="btn btn-primary full-width-btn" id="btnLoginMfaSubmit">
-              Verify & Launch Dashboard
+              Verify Code &amp; Launch Dashboard
             </button>
           </div>
         </form>
