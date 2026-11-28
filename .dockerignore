@@ -1,0 +1,14 @@
+.git
+.github
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.log
+.env
+files.zip
+.vscode

@@ -946,13 +946,16 @@ def get_lan_ip():
 
 
 def main():
+    default_port = int(os.environ.get("PORT", 8080))
+    default_bind = os.environ.get("BIND", "0.0.0.0")
+
     parser = argparse.ArgumentParser(description="SecureLedger Enterprise Backend Server")
-    parser.add_argument("-p", "--port", type=int, default=8080, help="Port to listen on (default: 8080)")
-    parser.add_argument("-b", "--bind", default="0.0.0.0", help="Address to bind to (default: 0.0.0.0)")
+    parser.add_argument("-p", "--port", type=int, default=default_port, help=f"Port to listen on (default: {default_port})")
+    parser.add_argument("-b", "--bind", default=default_bind, help=f"Address to bind to (default: {default_bind})")
     parser.add_argument("-d", "--dir", default=os.path.dirname(os.path.abspath(__file__)), help="Root directory")
     args = parser.parse_args()
 
-    db_path = os.path.join(args.dir, DB_NAME)
+    db_path = os.environ.get("DB_PATH", os.path.join(args.dir, DB_NAME))
     init_database(db_path)
 
     lan_ip = get_lan_ip()
