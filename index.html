@@ -17,9 +17,11 @@
     body:not(.is-authenticated) .app-container {
       display: none !important;
     }
+
     body.is-authenticated .welcome-gateway {
       display: none !important;
     }
+
     .welcome-gateway {
       position: fixed;
       inset: 0;
@@ -1201,9 +1203,9 @@
           <div class="modal-body" style="padding-top: 0;">
             <div class="form-group">
               <label for="loginCustomerId">Customer Identifier or Phone *</label>
-              <input type="text" id="loginCustomerId" class="form-control" value="alex.sterling@secureledger.io" placeholder="Email or +91 Phone" required>
+              <input type="text" id="loginCustomerId" class="form-control" value="secureuser@gmail.com" placeholder="Email or +91 Phone" required>
               <span class="field-error-msg" id="loginIdError" role="alert"></span>
-              <span class="form-helper">Demo User: alex.sterling@secureledger.io (+91 98765 43210)</span>
+              <span class="form-helper">Demo User: secureuser@gmail.com (+91 7310886131)</span>
             </div>
 
             <div class="form-group">
@@ -1283,7 +1285,7 @@
           <div class="modal-body">
             <div class="text-center-box">
               <h4>SMS Multi-Factor Authentication</h4>
-              <p>Enter the 6-digit cryptographic security code dispatched via SMS to your registered device (<strong id="loginMaskedPhone">+91••••••3210</strong>).</p>
+              <p>Enter the 6-digit cryptographic security code dispatched via SMS to your registered device (<strong id="loginMaskedPhone">+91••••••6131</strong>).</p>
             </div>
 
             <div class="form-group">

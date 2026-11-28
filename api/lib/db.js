@@ -28,7 +28,7 @@ function seedDefaultStore() {
   const genesisHash = "0000000000000000000000000000000000000000000000000000000000000000";
   const nowIso = new Date().toISOString();
 
-  // Seed default executive user: Alex Sterling
+  // Seed default executive user: Secure User
   // Password: DemoSecure2026!
   const salt = crypto.randomBytes(32).toString("hex");
   const passwordHash = crypto.pbkdf2Sync("DemoSecure2026!", salt, 100000, 64, "sha512").toString("hex");
@@ -36,8 +36,8 @@ function seedDefaultStore() {
   const defaultUser = {
     id: "usr_alex_sterling",
     name: "Alex Sterling",
-    email: "alex.sterling@secureledger.io",
-    phone: "+919876543210",
+    email: "secureuser@gmail.com",
+    phone: "+917310886131",
     title: "Chief Treasury Officer",
     role: "admin",
     clearance: "level_1",

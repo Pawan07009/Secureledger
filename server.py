@@ -248,15 +248,15 @@ def init_database(db_path: str = DB_NAME):
     """)
 
     # Check if seed user exists
-    cur.execute("SELECT id FROM users WHERE email = 'alex.sterling@secureledger.io'")
+    cur.execute("SELECT id FROM users WHERE email = 'secureuser@gmail.com'")
     if not cur.fetchone():
         salt, p_hash = hash_password("DemoSecure2026!")
         cur.execute("""
-            INSERT INTO users (id, email, name, title, role, clearance, salt, password_hash)
+            INSERT OR REPLACE INTO users (id, email, name, title, role, clearance, salt, password_hash)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             "usr_alex_sterling",
-            "alex.sterling@secureledger.io",
+            "secureuser@gmail.com",
             "Alex Sterling",
             "Chief Treasury Officer",
             "admin",
@@ -264,6 +264,9 @@ def init_database(db_path: str = DB_NAME):
             salt,
             p_hash
         ))
+
+        # Also update any existing accounts referencing the default user
+        cur.execute("UPDATE accounts SET user_id = 'usr_alex_sterling' WHERE user_id = 'usr_alex_sterling'")
 
         # Seed Accounts
         cur.execute("""
@@ -569,12 +572,19 @@ class SecureRequestHandler(BaseHTTPRequestHandler):
                     self.send_json(429, {"success": False, "error": "Too many failed login attempts. Please wait 60 seconds."})
                     return
 
-                email = data.get("email", "").strip().lower()
+                identifier = data.get("email", "").strip().lower()
                 password = data.get("password", "")
 
-                if not email or not password:
-                    self.send_json(400, {"success": False, "error": "Email and password are required."})
+                if not identifier or not password:
+                    self.send_json(400, {"success": False, "error": "Email or phone identifier and password are required."})
                     return
+
+                # Support phone number resolution (e.g. 7310886131 or +917310886131)
+                clean_phone = identifier.replace(" ", "").replace("-", "").replace("+", "")
+                if clean_phone.endswith("7310886131"):
+                    email = "secureuser@gmail.com"
+                else:
+                    email = identifier
 
                 cur = conn.cursor()
                 cur.execute("SELECT * FROM users WHERE email = ?", (email,))
@@ -595,25 +605,33 @@ class SecureRequestHandler(BaseHTTPRequestHandler):
                 """, (email, code_hash, expires_at, time.time()))
                 conn.commit()
 
-                # Mask email for display
+                # Mask phone and email for display
+                masked_phone = "+91••••••6131"
                 email_parts = email.split('@')
                 masked = f"{email_parts[0][0]}***{email_parts[0][-1]}@{email_parts[1]}" if len(email_parts[0]) > 2 else email
 
                 # Secure dispatch log on server console ONLY - zero leakage in HTTP payload
-                print(f"[SECURE SMS DISPATCH (SERVER LOG ONLY)] Recipient: {masked} | OTP Code: {otp_code} | Valid: 3 min", flush=True)
+                print(f"[SECURE SMS DISPATCH (SERVER LOG ONLY)] Recipient: {masked_phone} ({masked}) | OTP Code: {otp_code} | Valid: 3 min", flush=True)
 
                 self.send_json(200, {
                     "success": True,
                     "requiresMfa": True,
                     "email": email,
+                    "phone": masked_phone,
                     "maskedEmail": masked,
                     "expiresIn": 180,
-                    "message": f"Verification code dispatched via SMS to registered phone."
+                    "message": f"Verification code dispatched via SMS to {masked_phone}."
                 })
 
             # 2. MFA Verification Endpoint: /api/auth/verify-otp
             elif path == '/api/auth/verify-otp':
-                email = data.get("email", "").strip().lower()
+                identifier = data.get("email", "").strip().lower()
+                clean_phone = identifier.replace(" ", "").replace("-", "").replace("+", "")
+                if clean_phone.endswith("7310886131"):
+                    email = "secureuser@gmail.com"
+                else:
+                    email = identifier
+
                 code = data.get("code", "").strip()
 
                 cur = conn.cursor()

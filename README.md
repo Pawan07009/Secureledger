@@ -21,7 +21,7 @@ An enterprise-grade, accessible front-end **banking simulation and cryptographic
 ## ✨ Comprehensive Feature Matrix
 
 ### 1. Authentication, MFA & Session Management
-- **Customer Gateway**: Fictional demo credentials (`alex.sterling@secureledger.io`) with password visibility toggle.
+- **Customer Gateway**: Institutional executive credentials (`secureuser@gmail.com` or `+91 7310886131`) with password visibility toggle.
 - **Cryptographic OTP Generation**: 6-digit one-time passcodes generated using `window.crypto.getRandomValues`.
 - **OTP Lifecycle**: 60-second animated expiration countdown, visual progress bar, 20-second resend cooldown, and lockout after 3 consecutive failed attempts.
 - **Inactivity Heartbeat Guard**: 4-minute session timer with active user activity detection (`click`, `keydown`), a 30-second warning modal, session extension, and automated logout.
@@ -138,7 +138,7 @@ python server.py --port 8080
 - **Desktop (Localhost)**: Open `http://localhost:8080/`
 - **Phone / Mobile**: Open `http://<YOUR-LAN-IP>:8080/` (the exact IP is displayed in the console on startup, e.g. `http://172.16.72.61:8080/`)
 - **Default Credentials**:
-  - Email: `alex.sterling@secureledger.io`
+  - Email / Identifier: `secureuser@gmail.com` (or `+91 7310886131`)
   - Password: `DemoSecure2026!`
   - Role: `Chief Treasury Officer` (Admin clearance)
 

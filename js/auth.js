@@ -10,7 +10,8 @@ export class AuthManager {
 
     this.currentUser = {
       name: "Alex Sterling",
-      email: "alex.sterling@secureledger.io",
+      email: "secureuser@gmail.com",
+      phone: "+917310886131",
       role: "Chief Treasury Officer",
       customerId: "CUST-90241"
     };
@@ -18,7 +19,7 @@ export class AuthManager {
     this.securityLevel = 1; // Level 1 = Standard, Level 2 = Elevated Step-Up
     this.stepUpExpiresAt = null;
 
-    this.sessionTotalSeconds = 240; // 4 minutes
+    this.sessionTotalSeconds = 240; // 3 minutes
     this.sessionRemaining = 240;
     this.timerInterval = null;
 

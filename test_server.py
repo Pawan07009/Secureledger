@@ -122,13 +122,13 @@ def run_tests():
     assert_test("Unauthenticated check /api/auth/me returns 401", code == 401)
 
     code, _, data, _ = request('/api/auth/login', method='POST', data={
-        "email": "alex.sterling@secureledger.io",
+        "email": "secureuser@gmail.com",
         "password": "WrongPassword123!"
     })
     assert_test("Invalid password returns 401 Unauthorized", code == 401 and data.get("success") is False)
 
     code, _, data, _ = request('/api/auth/login', method='POST', data={
-        "email": "alex.sterling@secureledger.io",
+        "email": "secureuser@gmail.com",
         "password": "DemoSecure2026!"
     })
     assert_test("Valid credentials initiates MFA challenge (200 OK)", code == 200 and data.get("requiresMfa") is True)
@@ -139,7 +139,7 @@ def run_tests():
     import hashlib
     db_conn = sqlite3.connect('secureledger.db')
     cur = db_conn.cursor()
-    cur.execute("SELECT code FROM mfa_challenges WHERE email = 'alex.sterling@secureledger.io' ORDER BY id DESC LIMIT 1")
+    cur.execute("SELECT code FROM mfa_challenges WHERE email = 'secureuser@gmail.com' ORDER BY id DESC LIMIT 1")
     row = cur.fetchone()
     stored_hash = row[0] if row else ""
     db_conn.close()
@@ -153,19 +153,19 @@ def run_tests():
     assert_test("Server-Side Challenge Stored as SHA-256 Hash", bool(stored_hash and len(stored_hash) == 64), f"Hash: {stored_hash[:16]}...")
 
     code, _, data, _ = request('/api/auth/verify-otp', method='POST', data={
-        "email": "alex.sterling@secureledger.io",
+        "email": "secureuser@gmail.com",
         "code": "000000"
     })
     assert_test("Invalid OTP code rejected with 401", code == 401)
 
     code, resp_headers, data, _ = request('/api/auth/verify-otp', method='POST', data={
-        "email": "alex.sterling@secureledger.io",
+        "email": "secureuser@gmail.com",
         "code": otp_code
     })
     assert_test("Valid OTP successfully authenticates and issues session", code == 200 and data.get("success") is True and "token" in data)
 
     code, _, data, _ = request('/api/auth/me')
-    assert_test("Authenticated /api/auth/me returns user profile", code == 200 and data.get("user", {}).get("name") == "Alex Sterling")
+    assert_test("Authenticated /api/auth/me returns user profile", code == 200 and data.get("user", {}).get("email") == "secureuser@gmail.com")
 
     # --------------------------------------------------------------------------
     # 4. BANKING LEDGER & TRANSFERS

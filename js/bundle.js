@@ -212,7 +212,8 @@
 
       this.currentUser = {
         name: "Alex Sterling",
-        email: "alex.sterling@secureledger.io",
+        email: "secureuser@gmail.com",
+        phone: "+917310886131",
         role: "Chief Treasury Officer",
         customerId: "CUST-90241"
       };
@@ -394,7 +395,7 @@
         console.warn("[Auth API Offline, using fallback]:", err);
         if (customerId && password) {
           this.pendingEmail = customerId;
-          this.pendingPhone = "+91••••••3210";
+          this.pendingPhone = "+91••••••6131";
           return { success: true, requiresMfa: true, phone: this.pendingPhone };
         }
         return { success: false, error: "Network error connecting to authentication service." };
@@ -480,7 +481,8 @@
       this.isAuthenticated = true;
       this.currentUser = {
         name: "Alex Sterling",
-        email: "alex.sterling@secureledger.io",
+        email: "secureuser@gmail.com",
+        phone: "+917310886131",
         role: "Chief Treasury Officer",
         customerId: "CUST-90241"
       };
